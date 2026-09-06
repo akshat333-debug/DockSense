@@ -41,8 +41,35 @@ Shared, coordinate before editing: `configs/`, `STATE.md`, `requirements.txt`.
 
 ## Current state
 
-Plan approved ([plan.md](plan.md)). `project.md` drafted, **awaiting GATE 1 sign-off**.
-Detector weights cached and benchmarked. **No implementation code yet. No footage yet.**
+Plan approved ([plan.md](plan.md)), GATE 1 signed. Foundation layer landed and
+committed (`00f0b03`, **not yet pushed** as of this handoff — see Protocol step 6):
+
+- `handleguard/types.py` — **FROZEN.** Shared dataclasses. Do not edit without announcing here.
+- `handleguard/config.py` — YAML entry point.
+- `handleguard/perception/geometry.py` — pure geometry, 13 tests.
+- `scripts/fetch_public_data.py` — CC BY 4.0 subset fetch (reproducible).
+- `scripts/render_synthetic.py` — Newtonian synthetic drop/throw/drag/place clips
+  with frame-exact ground truth. Lets behaviour detectors be tuned + measured
+  before any real footage exists.
+- `models/yolov8s-worldv2.pt` — committed (25 MB), MPS benchmarked at 36 fps.
+
+**No detector/tracker/pipeline code yet. No real footage yet.**
+
+---
+
+## Data is NOT in git — fetch it after cloning
+
+`data/raw/`, `data/public/`, `data/synthetic/`, `data/processed/`, `data/clips/`
+are all gitignored. A fresh clone has no video. To reproduce:
+
+```bash
+pip install -r requirements.txt
+python scripts/fetch_public_data.py      # ~1.9 GB, CC BY 4.0, into data/public/
+python scripts/render_synthetic.py       # deterministic, into data/synthetic/
+```
+
+`data/raw/` = our own recordings (S1/S2/S3). Whoever films uploads them to shared
+storage out of band; they are never committed (size + privacy).
 
 ---
 
@@ -50,74 +77,96 @@ Detector weights cached and benchmarked. **No implementation code yet. No footag
 
 | Blocker | Severity | Owner | Note |
 |---|---|---|---|
-| **No warehouse video exists** | CRITICAL | unassigned | Blocks tuning, S3 metrics, demo, screenshots. See `docs/RECORDING_GUIDE.md`. Must happen today. |
-| **GATE 1 unsigned** | HIGH | user | `project.md` needs confirmation before implementation starts. |
-| **Lanes unassigned** | HIGH | user | All three rows below still say TBD. |
+| **No real warehouse footage (S1/S2/S3)** | CRITICAL | unassigned | Synthetic clips unblock detector *logic*. Real footage still required for the submission's "robustly demonstrated" claims and every S3 metric. ~20 min with boxes + a propped phone. See `docs/RECORDING_GUIDE.md`. |
+| **Lanes unassigned** | HIGH | team | All three rows in Ownership still say TBD. Assign before parallel work starts or you will collide. |
 
 ---
 
 ## Next tasks
 
-Ordered. Top items are unblocked and can run in parallel across lanes.
+Ordered. `types.py`, `config.py`, `geometry.py` are **done** (committed `00f0b03`).
+Pick up from here.
 
-### P0 — start now
+### IMMEDIATE NEXT — Lane A, unblocked, no footage needed
 
-1. **Record video** — `docs/RECORDING_GUIDE.md`, 3 sessions + hard negatives.
-   *Check:* `data/raw/takes.csv` exists, S3 recorded from a different angle and untouched.
-   *Blocks:* everything below marked ⛓.
+1. **`handleguard/video/reader.py`** — `iter_frames(path, inference_fps=8, max_res=(1280,720))`
+   yielding `Frame` (see `types.py`). Decode with cv2, skip to target fps, resize.
+   `Frame.t` is seconds from start and is the only time source downstream.
+   *Check:* iterate `data/synthetic/drop.mp4`, assert frame count ≈ duration × inference_fps,
+   assert `t` monotonic.
 
-2. **Detector wrapper** — `handleguard/perception/detector.py`.
-   YOLO-World (`yolov8s-worldv2.pt`), classes set from `configs/products.yaml`.
-   *Check:* runs on any mp4, prints per-frame boxes with class names.
+2. **`handleguard/perception/detector.py`** — `YoloWorldDetector.__call__(frame) -> list[Detection]`.
+   Load `models/yolov8s-worldv2.pt`, `set_classes()` from `configs/products.yaml` prompts,
+   map class index → (cls, role). `device="mps"` with a `try/except → "cpu"` fallback.
+   *Check:* runs on a synthetic clip, returns `Detection` objects with role populated.
 
-3. **Tracker** — `handleguard/tracking/tracker.py`. ByteTrack via ultralytics `persist=True`.
-   *Check:* IDs stay stable across a 10s clip.
+3. **`handleguard/tracking/tracker.py`** — `Tracker.update(dets, frame) -> list[Track]` via
+   ultralytics ByteTrack (`persist=True`). Plus `NullTracker` (fresh id per detection) for
+   the `use_tracking=False` ablation row.
+   *Check:* IDs stable across a 10 s synthetic clip.
 
-4. **Geometry utils** — `handleguard/features/geometry.py`.
-   `iou`, `intersection_area`, `horizontal_overlap`, `vertical_gap`, `point_in_polygon`,
-   `bbox_bottom_center`, `support_fraction`.
-   *Check:* `tests/unit/test_geometry.py` — asserts on hand-computed boxes. **Required.**
+### Lane B — unblocked, uses `data/synthetic/`
 
-5. **Track history + velocity** — `handleguard/features/trajectory.py`.
-   Smoothed velocity/acceleration. Never raw single-frame deltas.
-   *Check:* synthetic track of known motion returns expected velocity.
+4. **`handleguard/behaviours/base.py`** — `BehaviourDetector` ABC + `FrameContext` +
+   `TrackHistory` + `registry`. Copy the 5 contract rules from `plan.md` into the docstring
+   verbatim. Add all 12 `from . import bNN_x` lines to `__init__.py` now with stub classes
+   so nobody edits it again.
+   *Check:* `registry.build_all(cfg)` returns 12 detectors, disabled ones skipped.
 
-### P0 — after 1–5
+5. **`tests/fixtures/synth.py`** — `synth_track(...)`, `make_ctx(...)`, and per-behaviour
+   scenario generators (`scenario_drop`, `scenario_gentle_place`, `scenario_throw`,
+   `scenario_carry`, …).
+   *Check:* `make_ctx` builds a valid `FrameContext` from a list of synthetic tracks.
 
-6. ⛓ **Vertical slice: drop only** — upload → detect → track → drop → risk → incident → clip → view.
-   *Check:* one staged drop clip produces exactly 1 incident with a playable clip.
-   **Nothing else starts until this works end to end.**
+6. **B01 drop, B02 throw, B03 drag, B07 zone** — one class each. Read thresholds only from
+   `self.cfg`. Distances in object-heights (already normalized in `TrackFeatures`).
+   *Check per detector:* positive scenario fires, hard-negative scenario stays silent.
+   **Write the negative test first.**
 
-7. ⛓ Remaining 11 behaviour detectors, easiest first: zone → drag → overhang → unstable stack →
-   improper stack → rough handling → throw → stepping → manual handling → sequence → surface.
-   *Check per detector:* fires on its positive clips, silent on its named hard negative.
+### Lane C — unblocked, no footage needed
 
-8. Risk engine + dedup + evidence clips — `handleguard/risk/`, `handleguard/incidents/`.
-   *Check:* one continuous drop yields 1 incident, not 40.
+7. **`handleguard/db/store.py`** — SQLite via stdlib `sqlite3`, one table + JSON blob column.
+   `IncidentStore`: `init / add / query / get / stats / counts_by_behaviour`.
+   `query()` is also the assistant's tool surface — shape it for both.
+   *Check:* add 3 incidents, query by behaviour/min_risk/band, round-trip intact.
 
-9. FastAPI + SQLite + endpoints per master plan §30.
-   *Check:* `/health` returns detector loaded; upload→process→incident round-trips.
+8. **`scripts/seed_fake_incidents.py`** — 40 plausible incidents so Lane C can build UI
+   before the pipeline produces real ones. Mark them clearly as seeded, not AI-generated.
 
-10. Dashboard: incident list, detail + replay, review buttons, analytics.
-    *Check:* full supervisor loop clicks through with no console errors.
+9. **Vite scaffold + incident table** — `apps/web/`, React + Vite. Risk and confidence in
+   **separate columns**, band-coloured. Runs against seeded data.
+   *Check:* `npm run dev`, table renders 40 rows, sorts by risk.
 
-11. Grounded assistant — tool-call layer over the incident DB, template fallback when no API key.
-    *Check:* answers cite incident IDs; returns "no matching incidents" on an empty query;
-    refuses "who is the worst worker".
+### After 1–9 — needs the vertical slice wired (Lane A owns `pipeline.py`)
 
-### P1 — credibility, cheap, high value
+10. ⛓ **Vertical slice** — `pipeline.py`: synthetic clip → detect → track → features → B01 →
+    risk → incident → clip → DB. **Nothing downstream starts until this runs end to end.**
 
-12. ⛓ Eval harness — event-interval matching against `takes.csv`, per-behaviour P/R/F1 with **n shown**.
-    *Check:* run on S3 only. Report the honest number even if it's bad.
+11. Remaining behaviours B04–B06, B08–B12. `events/dedup.py`, `risk/scorer.py`, `risk/explain.py`,
+    `incidents/builder.py`.
+    *Check:* one continuous drop → exactly 1 incident, not 40.
 
-13. ⛓ Ablations — same code, flags off: no tracking / no smoothing / no event graph.
-    *Check:* a real table with real deltas. This is what backs the innovation claim.
+12. FastAPI (`apps/api/`) — `GET /incidents`, `/incidents/{id}`, `/stats`, `/clips/{file}`, `POST /chat`.
 
-14. Latency p50/p95 instrumentation.
+13. Incident detail view + clip playback + review buttons. Chat panel.
+
+14. Assistant — `assistant/templates.py` (offline, default) then LLM path behind `ANTHROPIC_API_KEY`.
+    *Check:* cites incident IDs; "No matching incidents found." on empty; refuses identity questions.
+
+### P1 — credibility
+
+15. ⛓ Eval harness — temporal-IoU event matching, per-behaviour P/R/F1 with **n shown**.
+    Synthetic first (logic), then S3 real footage (the real number). Report both honestly.
+
+16. ⛓ Ablation table — flags off: `use_tracking`, `use_smoothing`, `use_event_graph`.
+    Real deltas. Backs the innovation claim.
+
+17. Latency p50/p95 instrumentation.
 
 ### P2 — submission
 
-15. Screenshots (master plan §70), 5–6 slide deck, demo recording, README, user feedback round.
+18. Screenshots, 5–6 slide deck, demo recording, README (with CC BY 4.0 dataset attribution),
+    `scripts/demo.sh` (one command, offline), user-feedback round.
 
 ---
 
@@ -125,7 +174,8 @@ Ordered. Top items are unblocked and can run in parallel across lanes.
 
 | When | Who | What |
 |---|---|---|
-| 7 Sep | Claude | Lane A started: `types.py` (FROZEN), `config.py`, `perception/geometry.py`. 19 unit tests green. |
+| 7 Sep | Claude | `scripts/render_synthetic.py` + `data/synthetic/` — Newtonian drop/throw/drag/place clips, frame-exact GT. Detector logic no longer blocked on real footage. Clips gitignored (regenerate with the script). |
+| 7 Sep | Claude | Lane A foundation: `types.py` (FROZEN), `config.py`, `perception/geometry.py`. Unit tests green. Committed `00f0b03`. |
 | 7 Sep | Claude | `scripts/fetch_public_data.py` — reproducible CC BY 4.0 subset fetch, upstream train/test split preserved as tune/heldout. |
 | 7 Sep | Claude | MPS benchmark: **36.1 fps** (28 ms/frame). Risk R2 retired. |
 | 7 Sep | Claude | `plan.md` + `project.md` written. GATE 1 approved by user. |
@@ -143,7 +193,8 @@ Ordered. Top items are unblocked and can run in parallel across lanes.
 - [x] `handleguard/config.py` — single YAML entry point, `set_config_dir()` for tests
 - [x] `handleguard/perception/geometry.py` + 13 hand-computed tests
 - [x] `tests/unit/test_import_hygiene.py` — enforces one-directional layering
-- [x] Public dataset subset fetching (58 clips, ~1.9 GB)
+- [x] `scripts/fetch_public_data.py` — public dataset subset (~1.9 GB, gitignored)
+- [x] `scripts/render_synthetic.py` — synthetic physics clips (gitignored, regenerable)
 
 ---
 
