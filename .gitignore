@@ -11,14 +11,18 @@ venv/
 .pytest_cache/
 *.egg-info/
 
-# Data + models — keep dirs, ignore contents
+# Data + models — keep dirs, ignore contents.
+# Public footage is re-fetchable via scripts/fetch_public_data.py, so it is
+# reproducible without being committed. Provenance lives in project.md.
 data/raw/*
 data/processed/*
 data/clips/*
+data/public/*
 !data/**/.gitkeep
 !data/raw/takes.csv
-models/*.pt
-models/**/*.pt
+# Detector weights ARE committed — the offline demo depends on them being
+# in the clone. Only ignore incidental checkpoints from elsewhere.
+models/**/checkpoints/
 *.db
 
 # Keep small demo assets only

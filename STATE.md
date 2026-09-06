@@ -35,13 +35,14 @@ Shared, coordinate before editing: `configs/`, `STATE.md`, `requirements.txt`.
 
 ## Deadline
 
-**10 September 2026.** Today is 6 September. ~4 days.
+**10 September 2026.** Today is 7 September. **~3 days.**
 
 ---
 
 ## Current state
 
-Repo scaffolded. **No code written yet. No video recorded yet.**
+Plan approved ([plan.md](plan.md)). `project.md` drafted, **awaiting GATE 1 sign-off**.
+Detector weights cached and benchmarked. **No implementation code yet. No footage yet.**
 
 ---
 
@@ -49,7 +50,9 @@ Repo scaffolded. **No code written yet. No video recorded yet.**
 
 | Blocker | Severity | Owner | Note |
 |---|---|---|---|
-| **No warehouse video exists** | CRITICAL | unassigned | Blocks all thresholds, metrics, demo, screenshots. See `docs/RECORDING_GUIDE.md`. Must start today. |
+| **No warehouse video exists** | CRITICAL | unassigned | Blocks tuning, S3 metrics, demo, screenshots. See `docs/RECORDING_GUIDE.md`. Must happen today. |
+| **GATE 1 unsigned** | HIGH | user | `project.md` needs confirmation before implementation starts. |
+| **Lanes unassigned** | HIGH | user | All three rows below still say TBD. |
 
 ---
 
@@ -122,13 +125,25 @@ Ordered. Top items are unblocked and can run in parallel across lanes.
 
 | When | Who | What |
 |---|---|---|
-| 6 Sep | — | Repo scaffolded, recording guide + configs written. No code yet. |
+| 7 Sep | Claude | Lane A started: `types.py` (FROZEN), `config.py`, `perception/geometry.py`. 19 unit tests green. |
+| 7 Sep | Claude | `scripts/fetch_public_data.py` — reproducible CC BY 4.0 subset fetch, upstream train/test split preserved as tune/heldout. |
+| 7 Sep | Claude | MPS benchmark: **36.1 fps** (28 ms/frame). Risk R2 retired. |
+| 7 Sep | Claude | `plan.md` + `project.md` written. GATE 1 approved by user. |
+| 6 Sep | — | Repo scaffolded, recording guide + configs written. |
 
 ---
 
 ## Done
 
-_(nothing yet)_
+- [x] `plan.md`, `project.md` — GATE 1 signed off
+- [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)
+- [x] MPS benchmark — 36.1 fps, logged in decisions
+- [x] `.gitignore` bug fixed (was excluding the weights the offline demo needs)
+- [x] `handleguard/types.py` — **FROZEN**, do not edit without announcing here
+- [x] `handleguard/config.py` — single YAML entry point, `set_config_dir()` for tests
+- [x] `handleguard/perception/geometry.py` + 13 hand-computed tests
+- [x] `tests/unit/test_import_hygiene.py` — enforces one-directional layering
+- [x] Public dataset subset fetching (58 clips, ~1.9 GB)
 
 ---
 
@@ -136,7 +151,9 @@ _(nothing yet)_
 
 | Decision | Rationale |
 |---|---|
+| **Measured 7 Sep: YOLO-World `yolov8s-worldv2` on MPS = 28 ms/frame (36.1 fps)** at 720p, imgsz=640, 5 classes | Benchmarked on the actual M3/8GB machine with a synthetic frame. Retires risk R2 — no need to drop resolution or pre-render. ~4.5x headroom over the 8 inference-fps target. Re-measure on real footage once S1 exists. |
 | YOLO-World open-vocab detector | No annotation or training time available. Warehouse classes from text prompts. Cost: no custom-class mAP — report event-level metrics instead. |
+| Detector weights committed to `models/` (25 MB) | Offline demo requirement. `.gitignore` corrected — it originally excluded `models/*.pt`, which would have broken a clean clone. |
 | Thresholds normalized by object height, not pixels | Pixel thresholds break the moment the camera moves. See `configs/behaviours.yaml`. |
 | S3 session held out, never tuned on | Only way any reported metric survives scrutiny. |
 | SQLite, not Postgres | Prototype. One less service in the demo. |
