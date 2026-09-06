@@ -1,0 +1,136 @@
+# Behaviour detector thresholds.
+#
+# IMPORTANT: distances are in units of the tracked object's own height ("obj heights"),
+# not pixels. A box that falls 1.5x its own height fell 1.5 units whether the camera is
+# 3m or 8m away. Pixel thresholds silently stop firing the moment the camera moves.
+#
+# Velocities are obj-heights per second. Same reasoning.
+#
+# Every value below is a PLACEHOLDER until tuned on S1/S2 footage.
+# Record what you tuned on in STATE.md. Never tune on S3.
+
+video:
+  inference_fps: 8
+  display_fps: 24
+  max_resolution: [1280, 720]
+
+smoothing:
+  window_frames: 5          # moving average over velocity; raw 1-frame deltas are noise
+  min_track_age_frames: 4   # ignore brand-new tracks, they jitter
+
+drop:
+  enabled: true
+  min_fall_heights: 0.8         # obj heights of downward travel
+  min_downward_velocity: 1.5    # obj heights / second
+  impact_decel: 2.5             # velocity drop at impact
+  max_horizontal_ratio: 0.6     # above this it's a throw, not a drop
+  cooldown_seconds: 4.0
+  base_severity: 0.85
+
+throw:
+  enabled: true
+  min_speed: 2.0
+  min_horizontal_ratio: 0.6     # horizontal / total displacement
+  min_unsupported_frames: 3     # no person overlap while airborne
+  cooldown_seconds: 4.0
+  base_severity: 0.90
+
+drag:
+  enabled: true
+  min_distance_heights: 1.5     # horizontal travel, in obj heights
+  max_vertical_variation: 0.25  # stays low = never lifted
+  floor_proximity: 0.3          # bottom edge within this of floor line
+  min_duration_seconds: 1.5
+  cooldown_seconds: 3.0
+  base_severity: 0.55
+
+rough_handling:
+  enabled: true
+  min_accel_spike: 4.0
+  min_decel: 3.0
+  cooldown_seconds: 3.0
+  base_severity: 0.65
+
+improper_stack:
+  enabled: true
+  min_area_ratio: 1.4           # upper box this many x larger than lower = violation
+  min_overlap_x: 0.5
+  min_duration_seconds: 2.0
+  cooldown_seconds: 10.0
+  base_severity: 0.60
+
+unstable_stack:
+  enabled: true
+  max_support_ratio: 0.6        # horizontal_overlap(child, support) / width(child)
+  min_duration_seconds: 2.0
+  cooldown_seconds: 10.0
+  base_severity: 0.70
+
+zone_violation:
+  enabled: true
+  min_duration_seconds: 2.0     # transient crossing must not fire
+  cooldown_seconds: 15.0
+  base_severity: 0.45
+
+pallet_overhang:
+  enabled: true
+  min_support_fraction: 0.75    # area(product ∩ pallet) / area(product)
+  min_duration_seconds: 2.0
+  cooldown_seconds: 10.0
+  base_severity: 0.55
+
+stepping:
+  enabled: true
+  min_duration_seconds: 1.5
+  min_foot_overlap: 0.3
+  cooldown_seconds: 5.0
+  base_severity: 0.75
+
+manual_heavy_handling:
+  enabled: true
+  large_object_area_percentile: 0.8   # object in top 20% by size
+  max_persons: 1
+  equipment_search_radius_heights: 4.0
+  min_duration_seconds: 2.0
+  cooldown_seconds: 8.0
+  base_severity: 0.60
+
+unsafe_sequence:
+  enabled: true
+  cooldown_seconds: 10.0
+  base_severity: 0.65
+
+unsafe_surface:
+  enabled: true
+  min_duration_seconds: 1.0
+  cooldown_seconds: 8.0
+  base_severity: 0.60
+
+# Deduplication window per behaviour, seconds.
+# One continuous drop must produce one incident, not forty.
+dedup:
+  drop: 4
+  throw: 4
+  drag: 3
+  rough_handling: 3
+  improper_stack: 10
+  unstable_stack: 10
+  zone_violation: 15
+  pallet_overhang: 10
+  stepping: 5
+  manual_heavy_handling: 8
+  unsafe_sequence: 10
+  unsafe_surface: 8
+
+# Evidence clip buffers, seconds
+evidence:
+  pre_event_seconds: 3.0
+  post_event_seconds: 4.0
+
+# Ablation switches. Flip these off to produce the comparison table in STATE.md task 13.
+ablation:
+  use_tracking: true
+  use_smoothing: true
+  use_event_graph: true
+  use_zones: true
+  use_contextual_risk: true

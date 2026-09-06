@@ -1,0 +1,88 @@
+# SOP-backed recommendations. The LLM may rephrase these; it must not invent new policy.
+#
+# Language rules, non-negotiable (proposal §12, master plan §25):
+#   - "potential" / "observed", never "confirmed"
+#   - describe motion, never intent ("moved rapidly downward", not "carelessly threw")
+#   - never name or imply a worker
+#   - never recommend disciplinary action
+
+drop:
+  rule: "Products must be placed under controlled support, not released above the receiving surface."
+  recommendation: >
+    Inspect the product for visible damage and review the placement technique.
+    Lower products under control rather than releasing them above the surface.
+
+throw:
+  rule: "Products must not be released while in horizontal motion."
+  recommendation: >
+    Inspect the product for damage. Move products by carrying or using handling
+    equipment; do not release them mid-motion.
+
+drag:
+  rule: "Products must not be moved by sustained contact with the floor."
+  recommendation: >
+    Move the product using a trolley, pallet truck, or approved handling device
+    instead of dragging it across the floor.
+
+rough_handling:
+  rule: "Products must be placed with controlled deceleration."
+  recommendation: >
+    Review the placement technique and inspect the product. Place items down
+    under control rather than dropping them the final distance.
+
+improper_stack:
+  rule: "Heavier or larger items must be stacked below lighter or smaller items."
+  recommendation: >
+    Restack with the larger or heavier item at the base. Note this assessment
+    uses a size-based proxy; verify against actual product weights.
+
+unstable_stack:
+  rule: "Each stacked tier must be adequately supported by the tier below it."
+  recommendation: >
+    Restack to increase support overlap and reduce overhang before moving
+    or leaving the stack unattended.
+
+zone_violation:
+  rule: "Products must not be staged in walkways or restricted zones."
+  recommendation: >
+    Move the product to a designated staging area and keep walkways clear.
+
+pallet_overhang:
+  rule: "Product footprint must remain substantially within the pallet boundary."
+  recommendation: >
+    Reposition the product so it sits within the pallet footprint before
+    the load is moved or wrapped.
+
+stepping:
+  rule: "Personnel must not stand or step on products."
+  recommendation: >
+    Use a step platform or ladder. Inspect the product that was stepped on.
+
+manual_heavy_handling:
+  rule: "Large or heavy products require handling equipment or a team lift."
+  recommendation: >
+    Use a trolley or pallet truck, or arrange a team lift, for products of this size.
+    This is a process-risk indicator and not an assessment of lifting technique.
+
+unsafe_sequence:
+  rule: "Loading steps must follow the configured sequence, including stability verification."
+  recommendation: >
+    Review the handling sequence for this operation. Confirm equipment is
+    brought before lifting and stability is verified after placement.
+
+unsafe_surface:
+  rule: "Products must not be moved through zones marked wet or unsafe."
+  recommendation: >
+    Route product movement around the marked unsafe area until the surface
+    is cleared.
+
+# Assistant hard guardrails. Any answer violating one of these is a bug.
+assistant_guardrails:
+  - "Use only facts returned by tools. Never invent an incident."
+  - "Never identify, name, rank, or describe a worker."
+  - "Never infer intent."
+  - "Never state product damage is confirmed unless a human review recorded it."
+  - "Distinguish observed event from inferred risk in every answer."
+  - "Never recommend disciplinary action."
+  - "If no data matches, say 'No matching incidents were found.'"
+  - "Cite incident IDs and timestamps for every factual claim."

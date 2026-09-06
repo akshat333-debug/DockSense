@@ -1,0 +1,52 @@
+# YOLO-World open-vocabulary classes.
+#
+# These strings ARE the model input — model.set_classes([...]) takes them literally.
+# Wording matters more than you'd expect: "cardboard box" detects reliably,
+# "carton" does not. Tune the prompt strings against real footage, they are
+# as much a threshold as anything in behaviours.yaml.
+
+detector:
+  model: yolov8s-worldv2.pt
+  conf_threshold: 0.25
+  iou_threshold: 0.45
+  imgsz: 640
+
+classes:
+  person:
+    prompt: "person"
+    role: actor
+  carton:
+    prompt: "cardboard box"
+    role: product
+  large_carton:
+    prompt: "large cardboard box"
+    role: product
+  pallet:
+    prompt: "wooden pallet"
+    role: support
+  trolley:
+    prompt: "hand trolley"
+    role: equipment
+  pallet_truck:
+    prompt: "pallet jack"
+    role: equipment
+  forklift:
+    prompt: "forklift"
+    role: equipment
+
+# Fragility priors, 0-1. Feeds the S term of the risk formula.
+#
+# These are PRIORS, not measurements. Unless a product class is actually
+# identified from real metadata, the incident must say "generic product-risk
+# prior" rather than implying a known fragility. Do not claim otherwise in the UI.
+fragility:
+  default: 0.4
+  carton: 0.4
+  large_carton: 0.5
+  fragile_package: 0.9
+
+# Size proxy only. We cannot see weight. Any stacking rule using this must be
+# labelled "size-based proxy" in the explanation, per master plan §B05.
+size_proxy:
+  use_bbox_area: true
+  large_percentile: 0.8

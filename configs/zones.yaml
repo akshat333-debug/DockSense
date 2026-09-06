@@ -1,0 +1,27 @@
+# Zone polygons, per camera. Normalized coords (0-1) so they survive a resolution change.
+# Draw these in the UI against a reference frame; this file is the persisted result.
+#
+# Until real footage exists these are placeholders — replace after recording.
+
+cameras:
+  demo_cam_1:
+    reference_frame: data/sample/ref_demo_cam_1.jpg
+    zones:
+      - name: staging
+        type: allowed
+        polygon: [[0.05, 0.55], [0.45, 0.55], [0.45, 0.95], [0.05, 0.95]]
+      - name: loading_bay
+        type: allowed
+        polygon: [[0.50, 0.50], [0.95, 0.50], [0.95, 0.95], [0.50, 0.95]]
+      - name: walkway
+        type: restricted_product
+        polygon: [[0.45, 0.55], [0.50, 0.55], [0.50, 0.95], [0.45, 0.95]]
+
+zone_types:
+  allowed: {}
+  restricted_product:
+    description: "Products may not be placed here. People may pass through."
+  restricted:
+    description: "Neither products nor unauthorised movement."
+  unsafe_surface:
+    description: "Wet or otherwise unsafe floor. Product movement through here is flagged."

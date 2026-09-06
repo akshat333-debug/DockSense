@@ -1,0 +1,44 @@
+# Risk = 100 * (0.30B + 0.25K + 0.20S + 0.10D + 0.10F + 0.05Z)
+# Weights from the proposal §5. Components not applicable to an event are
+# dropped and the remainder re-normalized.
+#
+# Risk and confidence are SEPARATE and must never be merged into one number
+# in the UI. Risk = "how bad if real". Confidence = "how sure it's real".
+
+weights:
+  behaviour_severity: 0.30   # B
+  kinematics: 0.25           # K
+  support_instability: 0.20  # S
+  duration: 0.10             # D
+  frequency: 0.10            # F
+  zone_context: 0.05         # Z
+
+bands:
+  low:      [0, 24]
+  medium:   [25, 49]
+  high:     [50, 74]
+  critical: [75, 100]
+
+alert_policy:
+  low: log_only
+  medium: dashboard
+  high: notify
+  critical: notify_ack_required
+
+# A high-risk event the system is unsure about goes to the review queue,
+# not to a critical alarm. Cheapest false-positive control there is.
+confidence_gate:
+  min_confidence_for_alert: 0.55
+  demote_below: 0.70
+
+frequency:
+  window_minutes: 30
+  repeat_multiplier: 0.15    # per repeat of same behaviour, capped
+  max_multiplier: 0.60
+
+zone_risk:
+  staging: 0.2
+  loading_bay: 0.4
+  walkway: 0.8
+  danger_zone: 1.0
+  unknown: 0.3
