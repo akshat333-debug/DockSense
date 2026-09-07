@@ -66,6 +66,8 @@ synthetic vertical slice:
 - `handleguard/assistant/templates.py` — offline deterministic assistant answers
   with guardrails, citations, and identity refusal.
 - `apps/web/` — Vite/React incident review console over the API.
+- `handleguard/evaluation/metrics.py` + `scripts/evaluate_events.py` — temporal-IoU
+  event evaluation with per-behaviour TP/FP/FN, precision, recall, F1, and n.
 
 **Real footage is still missing. YOLO-World prompt validation is still not passing
 on procedural synthetic clips, so the end-to-end unit test uses deterministic fake
@@ -192,6 +194,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Added P2 evaluation harness: `EventLabel`, greedy temporal-IoU matching by video/behaviour, per-behaviour and micro TP/FP/FN, precision/recall/F1, `n_gt`, `n_pred`, CSV and SQLite incident loaders, plus `scripts/evaluate_events.py`. Verification: `python -m pytest tests\unit -q` -> 83 passed; py_compile passed; CLI smoke against synthetic ground truth returned a valid JSON report; `npm run build` still passes. |
 | 7 Sep | Codex | Extracted offline assistant logic to `handleguard/assistant/templates.py` and wired `/chat` through it. Direct tests cover cited incident IDs/timestamps, exact empty-result wording, identity refusal, incident-id lookup, and loading guardrails from `configs/sop_rules.yaml`. Verification: `python -m pytest tests\unit -q` -> 81 passed; py_compile passed for assistant/API modules; `npm run build` still passes. |
 | 7 Sep | Codex | Added evidence media extraction: `handleguard/incidents/media.py` writes bounded MP4 clips and JPEG thumbnails, and `pipeline.run()` attaches/persists `clip_path` and `thumb_path`. Verification: `python -m pytest tests\unit -q` -> 76 passed; py_compile passed for media/pipeline modules; `npm run build` still passes. |
 | 7 Sep | Codex | Added `apps/web/` Vite/React console: risk-sorted incident queue, band filter, stats strip, incident detail, evidence/SOP panels, review controls, clip-player slot, and guarded chat panel. Added API CORS for local Vite. Verification: `npm install` -> 0 vulnerabilities; `npm run build` passed; `python -m pytest tests\unit -q` -> 75 passed; live API returned 40 seeded rows and Vite served `http://127.0.0.1:5173/`. |
@@ -229,6 +232,7 @@ Pick up from here.
 - [x] `apps/api/main.py` — FastAPI incident list/detail/stats/review/clip/chat endpoints
 - [x] `handleguard/assistant/templates.py` — offline assistant citations, empty-result handling, and identity refusal
 - [x] `apps/web/` — Vite/React incident queue, detail, review, clip slot, and chat UI
+- [x] `handleguard/evaluation/metrics.py` + `scripts/evaluate_events.py` — temporal-IoU event evaluation with counts and F1
 - [x] `plan.md`, `project.md` — GATE 1 signed off
 - [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)
 - [x] MPS benchmark — 36.1 fps, logged in decisions

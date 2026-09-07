@@ -5,7 +5,7 @@ Generated: 7 September 2026.
 ## Stop Condition
 
 - Stop Codex work if weekly usage reaches 40% used or higher, because that means 60% or less remains.
-- Last checked during this pass: weekly usage 16% used, 84% remaining.
+- Last checked during this pass: weekly usage 18% used, 82% remaining.
 
 ## Critical Blockers
 
@@ -34,11 +34,12 @@ Generated: 7 September 2026.
 | P1 | Incident detail, clip playback, review controls | Done | Evidence clip plays in browser when `clip_path` exists |
 | P1 | Evidence clip extraction | Done | Pipeline writes MP4 clip and JPEG thumbnail paths |
 | P1 | Offline assistant templates and guardrails | Done | Cites incident IDs and refuses identity questions |
-| P2 | Evaluation harness and ablations | Not started | P/R/F1 with n; ablation table with real deltas |
+| P2 | Evaluation harness | Done | P/R/F1 with n from temporal-IoU event matching |
+| P2 | Ablation table | Not started | Real deltas for tracking/smoothing/event graph/context risk |
 | P2 | Offline demo script, README attribution, slides, rehearsal | Not started | WiFi-off demo succeeds twice |
 
 ## Immediate Next After This Pass
 
 1. Validate detector prompts on LOCO or real footage; procedural synthetic clips currently produce 0 YOLO-World detections even at low confidence.
-2. Start P2 evaluation harness: temporal-IoU event matching, per-behaviour precision/recall/F1, and synthetic-first reporting with n shown.
+2. Start ablation table runner: execute configured pipeline variants and write a report with real deltas, clearly separated from real-footage S3 metrics.
 3. Record real S1/S2/S3 footage, assign team lanes, and validate YOLO-World prompts on real/public footage.
