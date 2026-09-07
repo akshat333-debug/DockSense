@@ -39,6 +39,23 @@ def test_api_lists_gets_stats_and_reviews_incidents():
     assert reviewed.json()["review_note"] == "checked"
 
 
+def test_api_allows_local_vite_origin():
+    db_path = MEDIA / "api_cors.db"
+    seed(db_path, n=1)
+    client = TestClient(create_app(db_path=db_path, clip_dir=MEDIA))
+
+    response = client.options(
+        "/incidents",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
 def test_api_chat_cites_incidents_and_refuses_identity_requests():
     db_path = MEDIA / "api_chat.db"
     seed(db_path, n=4)

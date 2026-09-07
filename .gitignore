@@ -1,6 +1,8 @@
 .code-review-graph/
 .DS_Store
 node_modules/
+dist/
+*.tsbuildinfo
 .env
 
 # Python

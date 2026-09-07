@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -43,6 +44,13 @@ def create_app(
     clip_dir = Path(clip_dir or os.getenv("DOCKSENSE_CLIP_DIR", DEFAULT_CLIP_DIR))
     store = IncidentStore(db_path)
     app = FastAPI(title="DockSense API", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins(),
+        allow_credentials=False,
+        allow_methods=["GET", "PATCH", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
+    )
 
     def get_store() -> IncidentStore:
         store.init()
@@ -120,9 +128,6 @@ def create_app(
     return app
 
 
-app = create_app()
-
-
 def _incident_payload(incident: Incident) -> dict[str, Any]:
     return asdict(incident)
 
@@ -176,3 +181,18 @@ def _is_relative_to(path: Path, base: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _allowed_origins() -> list[str]:
+    raw = os.getenv("DOCKSENSE_CORS_ORIGINS")
+    if raw:
+        return [item.strip() for item in raw.split(",") if item.strip()]
+    return [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:5174",
+    ]
+
+
+app = create_app()

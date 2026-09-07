@@ -63,6 +63,7 @@ synthetic vertical slice:
 - `handleguard/pipeline.py` — video -> detect -> track -> features -> behaviours
   -> dedupe -> risk -> incident -> optional DB.
 - `apps/api/main.py` — FastAPI read/review/chat/clip endpoints over SQLite.
+- `apps/web/` — Vite/React incident review console over the API.
 
 **Real footage is still missing. YOLO-World prompt validation is still not passing
 on procedural synthetic clips, so the end-to-end unit test uses deterministic fake
@@ -189,6 +190,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Added `apps/web/` Vite/React console: risk-sorted incident queue, band filter, stats strip, incident detail, evidence/SOP panels, review controls, clip-player slot, and guarded chat panel. Added API CORS for local Vite. Verification: `npm install` -> 0 vulnerabilities; `npm run build` passed; `python -m pytest tests\unit -q` -> 75 passed; live API returned 40 seeded rows and Vite served `http://127.0.0.1:5173/`. |
 | 7 Sep | Codex | Added FastAPI service in `apps/api/main.py`: `/incidents`, `/incidents/{id}`, `/incidents/{id}/review`, `/stats`, `/clips/{file_path}`, and guarded offline `/chat`. Verification: `python -m pytest tests\unit -q` -> 74 passed; py_compile passed for API/store modules. |
 | 7 Sep | Codex | Added `TASK_SHEET.md` with prioritized remaining work and usage stop condition. Started Lane A by implementing `handleguard/video/reader.py` with timestamp-based sampling and unit coverage; synthetic `drop.mp4` smoke check passed at 32 frames / 4 s / 8 fps. |
 | 7 Sep | Codex | Implemented `handleguard/perception/detector.py`: YOLO-World wrapper, YAML prompt mapping, role-populated `Detection` conversion, repo-local predict/cache paths, and RuntimeError-only MPS→CPU fallback. Unit tests pass; real synthetic smoke initializes but returns 0 detections. |
@@ -220,6 +222,7 @@ Pick up from here.
 - [x] `handleguard/incidents/builder.py` + `handleguard/incidents/sop.py` — SOP-backed incident assembly
 - [x] `handleguard/pipeline.py` — deterministic synthetic clip to incident in SQLite path
 - [x] `apps/api/main.py` — FastAPI incident list/detail/stats/review/clip/chat endpoints
+- [x] `apps/web/` — Vite/React incident queue, detail, review, clip slot, and chat UI
 - [x] `plan.md`, `project.md` — GATE 1 signed off
 - [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)
 - [x] MPS benchmark — 36.1 fps, logged in decisions
