@@ -5,7 +5,7 @@ Generated: 7 September 2026.
 ## Stop Condition
 
 - Stop Codex work if weekly usage reaches 40% used or higher, because that means 60% or less remains.
-- Last checked during this pass: weekly usage 11% used, 89% remaining.
+- Last checked during this pass: weekly usage 12% used, 88% remaining.
 
 ## Critical Blockers
 
@@ -30,7 +30,7 @@ Generated: 7 September 2026.
 | P1 | Vite incident table | Not started | Renders and sorts seeded incidents |
 | P1 | Vertical slice pipeline | Done for synthetic/fake-detector path; real YOLO prompt validation still blocked | Synthetic clip to incident in DB |
 | P1 | Deduper, risk scorer, explanations, incident builder | Done | Continuous drop collapses to one incident |
-| P1 | FastAPI endpoints | Not started | `/incidents`, `/stats`, `/chat`, `/clips/{file}` respond |
+| P1 | FastAPI endpoints | Done | `/incidents`, `/incidents/{id}`, `/stats`, `/chat`, `/clips/{file}` respond |
 | P1 | Incident detail, clip playback, review controls | Not started | Evidence clip plays in browser |
 | P1 | Offline assistant templates and guardrails | Not started | Cites incident IDs and refuses identity questions |
 | P2 | Evaluation harness and ablations | Not started | P/R/F1 with n; ablation table with real deltas |
@@ -39,5 +39,5 @@ Generated: 7 September 2026.
 ## Immediate Next After This Pass
 
 1. Validate detector prompts on LOCO or real footage; procedural synthetic clips currently produce 0 YOLO-World detections even at low confidence.
-2. Start P1 FastAPI endpoints over `IncidentStore`: `/incidents`, `/incidents/{id}`, `/stats`, `/clips/{file}`, `/chat`.
+2. Start P1 web UI: Vite incident table, incident detail, review controls, and clip playback against the API.
 3. Record real S1/S2/S3 footage, assign team lanes, and validate YOLO-World prompts on real/public footage.

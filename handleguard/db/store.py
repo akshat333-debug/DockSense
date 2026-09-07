@@ -13,7 +13,22 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from handleguard.types import Incident, RiskScore
+from handleguard.types import (
+    Incident,
+    REVIEW_CONFIRMED,
+    REVIEW_FALSE_POSITIVE,
+    REVIEW_NEEDS_INVESTIGATION,
+    REVIEW_NEW,
+    RiskScore,
+)
+
+
+VALID_REVIEW_STATUSES = {
+    REVIEW_NEW,
+    REVIEW_CONFIRMED,
+    REVIEW_FALSE_POSITIVE,
+    REVIEW_NEEDS_INVESTIGATION,
+}
 
 
 class IncidentStore:
@@ -85,6 +100,18 @@ class IncidentStore:
                 (incident_id,),
             ).fetchone()
         return _incident_from_payload(json.loads(row["payload_json"])) if row else None
+
+    def update_review(self, incident_id: str, *, status: str, note: str = "") -> Incident | None:
+        if status not in VALID_REVIEW_STATUSES:
+            allowed = ", ".join(sorted(VALID_REVIEW_STATUSES))
+            raise ValueError(f"invalid review status {status!r}; expected one of: {allowed}")
+        incident = self.get(incident_id)
+        if incident is None:
+            return None
+        incident.review_status = status
+        incident.review_note = note
+        self.add(incident)
+        return incident
 
     def query(
         self,

@@ -62,6 +62,7 @@ synthetic vertical slice:
 - `handleguard/incidents/` — SOP-backed incident builder.
 - `handleguard/pipeline.py` — video -> detect -> track -> features -> behaviours
   -> dedupe -> risk -> incident -> optional DB.
+- `apps/api/main.py` — FastAPI read/review/chat/clip endpoints over SQLite.
 
 **Real footage is still missing. YOLO-World prompt validation is still not passing
 on procedural synthetic clips, so the end-to-end unit test uses deterministic fake
@@ -188,6 +189,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Added FastAPI service in `apps/api/main.py`: `/incidents`, `/incidents/{id}`, `/incidents/{id}/review`, `/stats`, `/clips/{file_path}`, and guarded offline `/chat`. Verification: `python -m pytest tests\unit -q` -> 74 passed; py_compile passed for API/store modules. |
 | 7 Sep | Codex | Added `TASK_SHEET.md` with prioritized remaining work and usage stop condition. Started Lane A by implementing `handleguard/video/reader.py` with timestamp-based sampling and unit coverage; synthetic `drop.mp4` smoke check passed at 32 frames / 4 s / 8 fps. |
 | 7 Sep | Codex | Implemented `handleguard/perception/detector.py`: YOLO-World wrapper, YAML prompt mapping, role-populated `Detection` conversion, repo-local predict/cache paths, and RuntimeError-only MPS→CPU fallback. Unit tests pass; real synthetic smoke initializes but returns 0 detections. |
 | 7 Sep | Codex | Added P1 synthetic vertical slice: `FeatureExtractor`, `EventDeduper`, risk scoring/explanations, SOP-backed incident builder, and `pipeline.run`. Verification: `python -m pytest tests\unit -q` -> 71 passed; py_compile passed for new modules. |
@@ -217,6 +219,7 @@ Pick up from here.
 - [x] `handleguard/risk/scorer.py` + `handleguard/risk/explain.py` — contextual risk and guarded explanation text
 - [x] `handleguard/incidents/builder.py` + `handleguard/incidents/sop.py` — SOP-backed incident assembly
 - [x] `handleguard/pipeline.py` — deterministic synthetic clip to incident in SQLite path
+- [x] `apps/api/main.py` — FastAPI incident list/detail/stats/review/clip/chat endpoints
 - [x] `plan.md`, `project.md` — GATE 1 signed off
 - [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)
 - [x] MPS benchmark — 36.1 fps, logged in decisions
