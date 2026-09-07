@@ -104,6 +104,17 @@ storage out of band; they are never committed (size + privacy).
 
 ## Next tasks
 
+Current queue (supersedes the historical numbered implementation plan below):
+
+1. Implement reproducible pipeline variant execution; the saved-prediction
+   comparison tool is complete (`docs/ABLATIONS.md`). Explicit smoothing and a
+   full event graph are not yet implemented; describe deduplication accurately.
+2. Add per-stage latency p50/p95 instrumentation.
+3. Complete B04-B06 and B08-B12, with positive and hard-negative tests.
+4. Validate prompts on public/real footage, package offline model assets, and
+   run S1/S2 validation followed by untouched S3 evaluation once footage exists.
+5. Finish offline demo startup, README, screenshots, slides and rehearsal.
+
 Ordered. `types.py`, `config.py`, `geometry.py` are **done** (committed `00f0b03`).
 Pick up from here.
 
@@ -194,6 +205,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Added saved-prediction ablation comparison CLI with manifest-relative paths, SHA-256 input fingerprints, per-behaviour metrics, micro deltas, JSON/Markdown output, and input overwrite protection. Fixed zero-IoU threshold matching unrelated/disjoint events. Added usage and experiment limitations in `docs/ABLATIONS.md`. Verification: 92 unit tests passed, including CLI subprocess tests, outside sandbox after temporary-directory permissions blocked sandbox runs. Weekly usage: 21% used, 79% remaining. Actual pipeline variant execution and real accuracy measurements remain pending. |
 | 7 Sep | Codex | Added P2 evaluation harness: `EventLabel`, greedy temporal-IoU matching by video/behaviour, per-behaviour and micro TP/FP/FN, precision/recall/F1, `n_gt`, `n_pred`, CSV and SQLite incident loaders, plus `scripts/evaluate_events.py`. Verification: `python -m pytest tests\unit -q` -> 83 passed; py_compile passed; CLI smoke against synthetic ground truth returned a valid JSON report; `npm run build` still passes. |
 | 7 Sep | Codex | Extracted offline assistant logic to `handleguard/assistant/templates.py` and wired `/chat` through it. Direct tests cover cited incident IDs/timestamps, exact empty-result wording, identity refusal, incident-id lookup, and loading guardrails from `configs/sop_rules.yaml`. Verification: `python -m pytest tests\unit -q` -> 81 passed; py_compile passed for assistant/API modules; `npm run build` still passes. |
 | 7 Sep | Codex | Added evidence media extraction: `handleguard/incidents/media.py` writes bounded MP4 clips and JPEG thumbnails, and `pipeline.run()` attaches/persists `clip_path` and `thumb_path`. Verification: `python -m pytest tests\unit -q` -> 76 passed; py_compile passed for media/pipeline modules; `npm run build` still passes. |
@@ -213,6 +225,8 @@ Pick up from here.
 ---
 
 ## Done
+
+- [x] `handleguard/evaluation/ablations.py` + `scripts/compare_ablations.py` - saved-prediction comparison reports with provenance and deltas
 
 - [x] `handleguard/video/reader.py` — OpenCV frame iterator with inference-fps sampling and max-resolution resize
 - [x] `handleguard/perception/detector.py` — YOLO-World adapter implemented and unit-tested; prompt validation remains open

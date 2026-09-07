@@ -128,7 +128,7 @@ def _metrics_for_behaviour(
     for gt_idx, gt_row in enumerate(gt):
         for pred_idx, pred_row in enumerate(pred):
             score = temporal_iou(gt_row, pred_row)
-            if score >= iou_threshold:
+            if score > 0.0 and score >= iou_threshold:
                 candidates.append((score, gt_idx, pred_idx))
 
     matched_gt: set[int] = set()

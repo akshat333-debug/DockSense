@@ -5,7 +5,7 @@ Generated: 7 September 2026.
 ## Stop Condition
 
 - Stop Codex work if weekly usage reaches 40% used or higher, because that means 60% or less remains.
-- Last checked during this pass: weekly usage 18% used, 82% remaining.
+- Last checked during this pass: weekly usage 21% used, 79% remaining.
 
 ## Critical Blockers
 
@@ -35,11 +35,14 @@ Generated: 7 September 2026.
 | P1 | Evidence clip extraction | Done | Pipeline writes MP4 clip and JPEG thumbnail paths |
 | P1 | Offline assistant templates and guardrails | Done | Cites incident IDs and refuses identity questions |
 | P2 | Evaluation harness | Done | P/R/F1 with n from temporal-IoU event matching |
-| P2 | Ablation table | Not started | Real deltas for tracking/smoothing/event graph/context risk |
+| P2 | Ablation comparison reports | Done for saved prediction CSVs | Manifest-driven JSON/Markdown reports, input hashes, counts and baseline deltas; CLI tests pass |
+| P2 | Pipeline variant execution and measured ablations | Pending | Run actual tracking/smoothing/dedup variants; risk needs separate labels/metrics |
+| P2 | Latency instrumentation | Not started | Per-stage p50/p95 on documented hardware and inputs |
+| P1 | Remaining behaviours B04-B06, B08-B12 | Stubs only | Positive and hard-negative tests plus real-footage validation |
 | P2 | Offline demo script, README attribution, slides, rehearsal | Not started | WiFi-off demo succeeds twice |
 
 ## Immediate Next After This Pass
 
 1. Validate detector prompts on LOCO or real footage; procedural synthetic clips currently produce 0 YOLO-World detections even at low confidence.
-2. Start ablation table runner: execute configured pipeline variants and write a report with real deltas, clearly separated from real-footage S3 metrics.
+2. Implement pipeline variant execution and explicit smoothing, then compare measured prediction exports with `scripts/compare_ablations.py` (see `docs/ABLATIONS.md`). Event deduplication is not a full event graph; risk quality is not measured by event F1.
 3. Record real S1/S2/S3 footage, assign team lanes, and validate YOLO-World prompts on real/public footage.
