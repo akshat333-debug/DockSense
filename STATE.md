@@ -61,7 +61,7 @@ synthetic vertical slice:
 - `handleguard/risk/` — contextual risk scoring and guarded explanations.
 - `handleguard/incidents/` — SOP-backed incident builder.
 - `handleguard/pipeline.py` — video -> detect -> track -> features -> behaviours
-  -> dedupe -> risk -> incident -> optional DB.
+  -> dedupe -> risk -> incident -> evidence media -> optional DB.
 - `apps/api/main.py` — FastAPI read/review/chat/clip endpoints over SQLite.
 - `apps/web/` — Vite/React incident review console over the API.
 
@@ -190,6 +190,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Added evidence media extraction: `handleguard/incidents/media.py` writes bounded MP4 clips and JPEG thumbnails, and `pipeline.run()` attaches/persists `clip_path` and `thumb_path`. Verification: `python -m pytest tests\unit -q` -> 76 passed; py_compile passed for media/pipeline modules; `npm run build` still passes. |
 | 7 Sep | Codex | Added `apps/web/` Vite/React console: risk-sorted incident queue, band filter, stats strip, incident detail, evidence/SOP panels, review controls, clip-player slot, and guarded chat panel. Added API CORS for local Vite. Verification: `npm install` -> 0 vulnerabilities; `npm run build` passed; `python -m pytest tests\unit -q` -> 75 passed; live API returned 40 seeded rows and Vite served `http://127.0.0.1:5173/`. |
 | 7 Sep | Codex | Added FastAPI service in `apps/api/main.py`: `/incidents`, `/incidents/{id}`, `/incidents/{id}/review`, `/stats`, `/clips/{file_path}`, and guarded offline `/chat`. Verification: `python -m pytest tests\unit -q` -> 74 passed; py_compile passed for API/store modules. |
 | 7 Sep | Codex | Added `TASK_SHEET.md` with prioritized remaining work and usage stop condition. Started Lane A by implementing `handleguard/video/reader.py` with timestamp-based sampling and unit coverage; synthetic `drop.mp4` smoke check passed at 32 frames / 4 s / 8 fps. |
@@ -220,6 +221,7 @@ Pick up from here.
 - [x] `handleguard/events/dedup.py` — one continuous drop collapses to one event
 - [x] `handleguard/risk/scorer.py` + `handleguard/risk/explain.py` — contextual risk and guarded explanation text
 - [x] `handleguard/incidents/builder.py` + `handleguard/incidents/sop.py` — SOP-backed incident assembly
+- [x] `handleguard/incidents/media.py` — evidence MP4 and JPEG thumbnail extraction
 - [x] `handleguard/pipeline.py` — deterministic synthetic clip to incident in SQLite path
 - [x] `apps/api/main.py` — FastAPI incident list/detail/stats/review/clip/chat endpoints
 - [x] `apps/web/` — Vite/React incident queue, detail, review, clip slot, and chat UI

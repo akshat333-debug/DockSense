@@ -10,10 +10,15 @@ from handleguard.behaviours.base import FrameContext, TrackHistory
 from handleguard.behaviours.registry import build_all
 from handleguard.events.dedup import EventDeduper
 from handleguard.features.compute import FeatureExtractor
-from handleguard.incidents.builder import build_incident
+from handleguard.incidents.builder import build_incident, incident_id_for
+from handleguard.incidents.media import write_evidence_assets
+from handleguard.risk.scorer import score_event
 from handleguard.tracking.tracker import Tracker
 from handleguard.types import Detection, Frame, Incident, Track
 from handleguard.video.reader import iter_frames
+
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CLIP_DIR = ROOT / "data" / "clips"
 
 
 class DetectorLike(Protocol):
@@ -37,6 +42,8 @@ def run(
     video_id: str | None = None,
     session: str = "synthetic",
     camera: str = "demo_cam_1",
+    clip_dir: str | Path | None = DEFAULT_CLIP_DIR,
+    write_clips: bool = True,
     max_frames: int | None = None,
 ) -> list[Incident]:
     behaviour_cfg = config.behaviours()
@@ -89,10 +96,35 @@ def run(
             for event in behaviour.update(ctx):
                 deduper.push(event)
 
-    incidents = [
-        build_incident(event, video_id=video_id, session=session, camera=camera)
-        for event in deduper.flush()
-    ]
+    incidents = []
+    evidence_cfg = behaviour_cfg.get("evidence", {})
+    for event in deduper.flush():
+        risk = score_event(event)
+        incident_id = incident_id_for(event, video_id)
+        clip_path = thumb_path = None
+        if write_clips and clip_dir is not None:
+            assets = write_evidence_assets(
+                video_path,
+                event,
+                output_dir=clip_dir,
+                incident_id=incident_id,
+                pre_seconds=float(evidence_cfg.get("pre_event_seconds", 3.0)),
+                post_seconds=float(evidence_cfg.get("post_event_seconds", 4.0)),
+            )
+            clip_path = assets.clip_path
+            thumb_path = assets.thumb_path
+        incidents.append(
+            build_incident(
+                event,
+                video_id=video_id,
+                session=session,
+                camera=camera,
+                risk=risk,
+                clip_path=clip_path,
+                thumb_path=thumb_path,
+                incident_id=incident_id,
+            )
+        )
     if store is not None:
         if hasattr(store, "init"):
             store.init()

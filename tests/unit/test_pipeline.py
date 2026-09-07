@@ -20,6 +20,7 @@ class FallingBoxDetector:
 def test_pipeline_writes_synthetic_drop_incident_to_store():
     video_path = Path("data/test_tmp/pipeline_drop.mp4")
     db_path = Path("data/test_tmp/pipeline_incidents.db")
+    clip_dir = Path("data/test_tmp/clips")
     video_path.parent.mkdir(parents=True, exist_ok=True)
     _write_blank_video(video_path)
 
@@ -30,14 +31,20 @@ def test_pipeline_writes_synthetic_drop_incident_to_store():
         tracker=Tracker(backend="iou", min_iou=0.0),
         store=store,
         video_id="pipeline-drop",
+        clip_dir=clip_dir,
         max_frames=24,
     )
 
     assert len(incidents) == 1
     assert incidents[0].behaviour_id == "B01"
     assert incidents[0].risk.score > 0
+    assert incidents[0].clip_path is not None
+    assert incidents[0].thumb_path is not None
+    assert (clip_dir / incidents[0].clip_path).is_file()
+    assert (clip_dir / incidents[0].thumb_path).is_file()
     assert store.stats()["total"] == 1
     assert store.get(incidents[0].id).explanation == incidents[0].explanation
+    assert store.get(incidents[0].id).clip_path == incidents[0].clip_path
 
 
 def _write_blank_video(path: Path) -> None:

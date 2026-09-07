@@ -23,7 +23,7 @@ def build_incident(
     incident_id: str | None = None,
 ) -> Incident:
     risk = risk or score_event(event)
-    incident_id = incident_id or _incident_id(event, video_id)
+    incident_id = incident_id or incident_id_for(event, video_id)
     return Incident(
         id=incident_id,
         behaviour_id=event.behaviour_id,
@@ -45,7 +45,7 @@ def build_incident(
     )
 
 
-def _incident_id(event: BehaviourEvent, video_id: str) -> str:
+def incident_id_for(event: BehaviourEvent, video_id: str) -> str:
     raw = f"{video_id}|{event.behaviour_id}|{event.start_t:.3f}|{event.end_t:.3f}|{event.track_ids}"
     digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8].upper()
     return f"INC-{digest}"
