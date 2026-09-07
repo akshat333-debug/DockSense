@@ -1,5 +1,7 @@
 # Core CV
 ultralytics>=8.3.0        # YOLO-World detector + ByteTrack tracker
+clip @ git+https://github.com/ultralytics/CLIP.git  # required by YOLO-World set_classes()
+lap>=0.5.12              # required by Ultralytics ByteTrack
 opencv-python>=4.10.0
 numpy>=1.26.0
 scipy>=1.13.0

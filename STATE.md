@@ -79,6 +79,8 @@ storage out of band; they are never committed (size + privacy).
 |---|---|---|---|
 | **No real warehouse footage (S1/S2/S3)** | CRITICAL | unassigned | Synthetic clips unblock detector *logic*. Real footage still required for the submission's "robustly demonstrated" claims and every S3 metric. ~20 min with boxes + a propped phone. See `docs/RECORDING_GUIDE.md`. |
 | **Lanes unassigned** | HIGH | team | All three rows in Ownership still say TBD. Assign before parallel work starts or you will collide. |
+| **YOLO-World prompt validation not yet passing on procedural synthetic clips** | HIGH | CV | Wrapper initializes after installing `clip`, but `data/synthetic/drop.mp4` returns 0 detections at current prompts and even at 0.01 confidence. Validate prompts on LOCO/real footage before relying on detector output. |
+| **CLIP text-model cache strategy unresolved for clean clone** | MEDIUM | CV | Local workspace cache exists at `models/.cache_home/.cache/clip/ViT-B-32.pt`, and code redirects YOLO-World there. It remains gitignored to avoid committing a large cache. Final packaging must decide how a clean offline clone receives this asset. |
 
 ---
 
@@ -174,6 +176,9 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Added `TASK_SHEET.md` with prioritized remaining work and usage stop condition. Started Lane A by implementing `handleguard/video/reader.py` with timestamp-based sampling and unit coverage; synthetic `drop.mp4` smoke check passed at 32 frames / 4 s / 8 fps. |
+| 7 Sep | Codex | Implemented `handleguard/perception/detector.py`: YOLO-World wrapper, YAML prompt mapping, role-populated `Detection` conversion, repo-local predict/cache paths, and RuntimeError-only MPS→CPU fallback. Unit tests pass; real synthetic smoke initializes but returns 0 detections. |
+| 7 Sep | Codex | Finished code-owned P0: ByteTrack-backed `Tracker` with IoU fallback, `NullTracker`, behaviour `FrameContext`/`TrackHistory`/registry, B01/B02/B03/B07 detectors with hard-negative tests, SQLite `IncidentStore`, and deterministic fake incident seeding. |
 | 7 Sep | Claude | `scripts/render_synthetic.py` + `data/synthetic/` — Newtonian drop/throw/drag/place clips, frame-exact GT. Detector logic no longer blocked on real footage. Clips gitignored (regenerate with the script). |
 | 7 Sep | Claude | Lane A foundation: `types.py` (FROZEN), `config.py`, `perception/geometry.py`. Unit tests green. Committed `00f0b03`. |
 | 7 Sep | Claude | `scripts/fetch_public_data.py` — reproducible CC BY 4.0 subset fetch, upstream train/test split preserved as tune/heldout. |
@@ -185,6 +190,15 @@ Pick up from here.
 
 ## Done
 
+- [x] `handleguard/video/reader.py` — OpenCV frame iterator with inference-fps sampling and max-resolution resize
+- [x] `handleguard/perception/detector.py` — YOLO-World adapter implemented and unit-tested; prompt validation remains open
+- [x] `handleguard/tracking/tracker.py` — ByteTrack-backed tracker with deterministic IoU fallback plus `NullTracker`
+- [x] `handleguard/behaviours/base.py` — `FrameContext`, `TrackHistory`, shared detector contract, confidence helper
+- [x] `handleguard/behaviours/registry.py` + all 12 behaviour module imports/stubs
+- [x] B01 drop, B02 throw, B03 drag, B07 zone violation — implemented against normalized `TrackFeatures`
+- [x] `tests/fixtures/synth.py` — synthetic track/context fixtures for behaviour tests
+- [x] `handleguard/db/store.py` — SQLite incident persistence with query/get/stats/counts
+- [x] `scripts/seed_fake_incidents.py` — 40 clearly seeded placeholder incidents for product work
 - [x] `plan.md`, `project.md` — GATE 1 signed off
 - [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)
 - [x] MPS benchmark — 36.1 fps, logged in decisions
