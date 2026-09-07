@@ -63,6 +63,8 @@ synthetic vertical slice:
 - `handleguard/pipeline.py` — video -> detect -> track -> features -> behaviours
   -> dedupe -> risk -> incident -> evidence media -> optional DB.
 - `apps/api/main.py` — FastAPI read/review/chat/clip endpoints over SQLite.
+- `handleguard/assistant/templates.py` — offline deterministic assistant answers
+  with guardrails, citations, and identity refusal.
 - `apps/web/` — Vite/React incident review console over the API.
 
 **Real footage is still missing. YOLO-World prompt validation is still not passing
@@ -190,6 +192,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 7 Sep | Codex | Extracted offline assistant logic to `handleguard/assistant/templates.py` and wired `/chat` through it. Direct tests cover cited incident IDs/timestamps, exact empty-result wording, identity refusal, incident-id lookup, and loading guardrails from `configs/sop_rules.yaml`. Verification: `python -m pytest tests\unit -q` -> 81 passed; py_compile passed for assistant/API modules; `npm run build` still passes. |
 | 7 Sep | Codex | Added evidence media extraction: `handleguard/incidents/media.py` writes bounded MP4 clips and JPEG thumbnails, and `pipeline.run()` attaches/persists `clip_path` and `thumb_path`. Verification: `python -m pytest tests\unit -q` -> 76 passed; py_compile passed for media/pipeline modules; `npm run build` still passes. |
 | 7 Sep | Codex | Added `apps/web/` Vite/React console: risk-sorted incident queue, band filter, stats strip, incident detail, evidence/SOP panels, review controls, clip-player slot, and guarded chat panel. Added API CORS for local Vite. Verification: `npm install` -> 0 vulnerabilities; `npm run build` passed; `python -m pytest tests\unit -q` -> 75 passed; live API returned 40 seeded rows and Vite served `http://127.0.0.1:5173/`. |
 | 7 Sep | Codex | Added FastAPI service in `apps/api/main.py`: `/incidents`, `/incidents/{id}`, `/incidents/{id}/review`, `/stats`, `/clips/{file_path}`, and guarded offline `/chat`. Verification: `python -m pytest tests\unit -q` -> 74 passed; py_compile passed for API/store modules. |
@@ -224,6 +227,7 @@ Pick up from here.
 - [x] `handleguard/incidents/media.py` — evidence MP4 and JPEG thumbnail extraction
 - [x] `handleguard/pipeline.py` — deterministic synthetic clip to incident in SQLite path
 - [x] `apps/api/main.py` — FastAPI incident list/detail/stats/review/clip/chat endpoints
+- [x] `handleguard/assistant/templates.py` — offline assistant citations, empty-result handling, and identity refusal
 - [x] `apps/web/` — Vite/React incident queue, detail, review, clip slot, and chat UI
 - [x] `plan.md`, `project.md` — GATE 1 signed off
 - [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)

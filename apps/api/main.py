@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from handleguard.assistant import answer_question
 from handleguard.db import IncidentStore
 from handleguard.db.store import VALID_REVIEW_STATUSES
 from handleguard.types import Incident
@@ -123,56 +124,14 @@ def create_app(
 
     @app.post("/chat", response_model=ChatResponse)
     def chat(req: ChatRequest, store: IncidentStore = Depends(get_store)) -> ChatResponse:
-        return _answer_question(req.question, store)
+        answer = answer_question(req.question, store)
+        return ChatResponse(answer=answer.answer, incident_ids=answer.incident_ids)
 
     return app
 
 
 def _incident_payload(incident: Incident) -> dict[str, Any]:
     return asdict(incident)
-
-
-def _answer_question(question: str, store: IncidentStore) -> ChatResponse:
-    q = question.lower()
-    if _asks_for_identity(q):
-        return ChatResponse(
-            answer=(
-                "I cannot identify, rank, or describe workers. I can summarize "
-                "observed product-handling incidents with incident IDs and timestamps."
-            ),
-            incident_ids=[],
-        )
-
-    kwargs: dict[str, Any] = {"limit": 10}
-    for name in ("drop", "throw", "drag", "zone_violation"):
-        if name.replace("_", " ") in q or name in q:
-            kwargs["name"] = name
-            break
-    if "critical" in q:
-        kwargs["band"] = "critical"
-    elif "high" in q:
-        kwargs["min_risk"] = 50.0
-
-    rows = store.query(**kwargs)
-    if not rows:
-        return ChatResponse(answer="No matching incidents were found.", incident_ids=[])
-
-    lines = [
-        (
-            f"{row.id} at {row.start_t:.2f}s: observed potential "
-            f"{row.name.replace('_', ' ')}; risk {row.risk.band} "
-            f"({row.risk.score:.1f}/100), confidence {row.risk.confidence:.2f}."
-        )
-        for row in rows[:5]
-    ]
-    if len(rows) > 5:
-        lines.append(f"{len(rows) - 5} additional matching incidents were omitted from this short answer.")
-    return ChatResponse(answer="\n".join(lines), incident_ids=[row.id for row in rows[:5]])
-
-
-def _asks_for_identity(q: str) -> bool:
-    identity_terms = ("who", "name", "identify", "person", "worker", "employee", "operator")
-    return any(term in q for term in identity_terms)
 
 
 def _is_relative_to(path: Path, base: Path) -> bool:
