@@ -41,8 +41,9 @@ Shared, coordinate before editing: `configs/`, `STATE.md`, `requirements.txt`.
 
 ## Current state
 
-Plan approved ([plan.md](plan.md)), GATE 1 signed. Foundation layer landed and
-committed (`00f0b03`, **not yet pushed** as of this handoff — see Protocol step 6):
+Plan approved ([plan.md](plan.md)), GATE 1 signed. Foundation and code-owned P0
+landed, committed, and pushed through `e82f958`. P1 now has a deterministic
+synthetic vertical slice:
 
 - `handleguard/types.py` — **FROZEN.** Shared dataclasses. Do not edit without announcing here.
 - `handleguard/config.py` — YAML entry point.
@@ -53,7 +54,18 @@ committed (`00f0b03`, **not yet pushed** as of this handoff — see Protocol ste
   before any real footage exists.
 - `models/yolov8s-worldv2.pt` — committed (25 MB), MPS benchmarked at 36 fps.
 
-**No detector/tracker/pipeline code yet. No real footage yet.**
+- `handleguard/features/compute.py` — normalized velocities, acceleration, zone,
+  floor proximity, support, and held-by-person features.
+- `handleguard/events/dedup.py` — continuous detector firings collapse into one
+  event per behaviour/track/window.
+- `handleguard/risk/` — contextual risk scoring and guarded explanations.
+- `handleguard/incidents/` — SOP-backed incident builder.
+- `handleguard/pipeline.py` — video -> detect -> track -> features -> behaviours
+  -> dedupe -> risk -> incident -> optional DB.
+
+**Real footage is still missing. YOLO-World prompt validation is still not passing
+on procedural synthetic clips, so the end-to-end unit test uses deterministic fake
+detections.**
 
 ---
 
@@ -178,6 +190,7 @@ Pick up from here.
 |---|---|---|
 | 7 Sep | Codex | Added `TASK_SHEET.md` with prioritized remaining work and usage stop condition. Started Lane A by implementing `handleguard/video/reader.py` with timestamp-based sampling and unit coverage; synthetic `drop.mp4` smoke check passed at 32 frames / 4 s / 8 fps. |
 | 7 Sep | Codex | Implemented `handleguard/perception/detector.py`: YOLO-World wrapper, YAML prompt mapping, role-populated `Detection` conversion, repo-local predict/cache paths, and RuntimeError-only MPS→CPU fallback. Unit tests pass; real synthetic smoke initializes but returns 0 detections. |
+| 7 Sep | Codex | Added P1 synthetic vertical slice: `FeatureExtractor`, `EventDeduper`, risk scoring/explanations, SOP-backed incident builder, and `pipeline.run`. Verification: `python -m pytest tests\unit -q` -> 71 passed; py_compile passed for new modules. |
 | 7 Sep | Codex | Finished code-owned P0: ByteTrack-backed `Tracker` with IoU fallback, `NullTracker`, behaviour `FrameContext`/`TrackHistory`/registry, B01/B02/B03/B07 detectors with hard-negative tests, SQLite `IncidentStore`, and deterministic fake incident seeding. |
 | 7 Sep | Claude | `scripts/render_synthetic.py` + `data/synthetic/` — Newtonian drop/throw/drag/place clips, frame-exact GT. Detector logic no longer blocked on real footage. Clips gitignored (regenerate with the script). |
 | 7 Sep | Claude | Lane A foundation: `types.py` (FROZEN), `config.py`, `perception/geometry.py`. Unit tests green. Committed `00f0b03`. |
@@ -199,6 +212,11 @@ Pick up from here.
 - [x] `tests/fixtures/synth.py` — synthetic track/context fixtures for behaviour tests
 - [x] `handleguard/db/store.py` — SQLite incident persistence with query/get/stats/counts
 - [x] `scripts/seed_fake_incidents.py` — 40 clearly seeded placeholder incidents for product work
+- [x] `handleguard/features/compute.py` — scale-normalized track feature extractor
+- [x] `handleguard/events/dedup.py` — one continuous drop collapses to one event
+- [x] `handleguard/risk/scorer.py` + `handleguard/risk/explain.py` — contextual risk and guarded explanation text
+- [x] `handleguard/incidents/builder.py` + `handleguard/incidents/sop.py` — SOP-backed incident assembly
+- [x] `handleguard/pipeline.py` — deterministic synthetic clip to incident in SQLite path
 - [x] `plan.md`, `project.md` — GATE 1 signed off
 - [x] Detector weights cached to `models/yolov8s-worldv2.pt` (25 MB, committed)
 - [x] MPS benchmark — 36.1 fps, logged in decisions

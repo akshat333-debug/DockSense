@@ -5,7 +5,7 @@ Generated: 7 September 2026.
 ## Stop Condition
 
 - Stop Codex work if weekly usage reaches 40% used or higher, because that means 60% or less remains.
-- Last checked during previous pass: weekly usage 5% used, 95% remaining.
+- Last checked during this pass: weekly usage 11% used, 89% remaining.
 
 ## Critical Blockers
 
@@ -28,8 +28,8 @@ Generated: 7 September 2026.
 | P0 | `handleguard/db/store.py`: SQLite incident store | Done | Round-trip query by behaviour, risk, band |
 | P0 | `scripts/seed_fake_incidents.py` | Done | 40 clearly seeded demo incidents written to `data/processed/incidents.db` |
 | P1 | Vite incident table | Not started | Renders and sorts seeded incidents |
-| P1 | Vertical slice pipeline | Not started | Synthetic clip to incident in DB |
-| P1 | Deduper, risk scorer, explanations, incident builder | Not started | Continuous drop collapses to one incident |
+| P1 | Vertical slice pipeline | Done for synthetic/fake-detector path; real YOLO prompt validation still blocked | Synthetic clip to incident in DB |
+| P1 | Deduper, risk scorer, explanations, incident builder | Done | Continuous drop collapses to one incident |
 | P1 | FastAPI endpoints | Not started | `/incidents`, `/stats`, `/chat`, `/clips/{file}` respond |
 | P1 | Incident detail, clip playback, review controls | Not started | Evidence clip plays in browser |
 | P1 | Offline assistant templates and guardrails | Not started | Cites incident IDs and refuses identity questions |
@@ -39,5 +39,5 @@ Generated: 7 September 2026.
 ## Immediate Next After This Pass
 
 1. Validate detector prompts on LOCO or real footage; procedural synthetic clips currently produce 0 YOLO-World detections even at low confidence.
-2. Start P1 vertical slice: features -> event dedup -> risk -> incident builder -> DB.
-3. Record real S1/S2/S3 footage and assign team lanes; these are the only P0 items not solvable inside the codebase.
+2. Start P1 FastAPI endpoints over `IncidentStore`: `/incidents`, `/incidents/{id}`, `/stats`, `/clips/{file}`, `/chat`.
+3. Record real S1/S2/S3 footage, assign team lanes, and validate YOLO-World prompts on real/public footage.
