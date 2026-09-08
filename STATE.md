@@ -95,28 +95,188 @@ storage out of band; they are never committed (size + privacy).
 
 | Blocker | Severity | Owner | Note |
 |---|---|---|---|
-| **No real warehouse footage (S1/S2/S3)** | CRITICAL | unassigned | Synthetic clips unblock detector *logic*. Real footage still required for the submission's "robustly demonstrated" claims and every S3 metric. ~20 min with boxes + a propped phone. See `docs/RECORDING_GUIDE.md`. |
+| **No real footage of drop / throw / stacking** | CRITICAL | unassigned | Public CCTV covers B07 + hard negatives only. B01/B02/B05/B06/B08 have no real video to fire on. **Decision taken 8 Sep: we record.** Full brief below — see *Recording brief*. ~35 min. |
+| **Offline demo broken — 338 MB CLIP downloads at runtime** | CRITICAL | CV | `set_classes()` pulls OpenAI CLIP ViT-B-32 on first use. Measured 8 Sep: cold run 186 s, of which **177 s was this download**. Cache lands in `models/.cache_home/` (gitignored) so a clean clone with WiFi off cannot detect anything. Fails NFR1 + AC13. File is 338 MB — **over GitHub's 100 MB hard limit**, so plain `git add` will be rejected. Needs LFS, chunking, or a setup script + preflight. |
+| **No behaviour has ever fired on real video** | HIGH | CV | Pipeline runs clean on real CCTV (8.1 s / 60 frames warm) but yields **0 incidents**, because `configs/zones.yaml` still holds placeholder polygons for `demo_cam_1` that don't match the public-CCTV geometry. Trace real polygons → B07 fires. ~1 h. |
 | **Lanes unassigned** | HIGH | team | All three rows in Ownership still say TBD. Assign before parallel work starts or you will collide. |
-| **YOLO-World prompt validation not yet passing on procedural synthetic clips** | HIGH | CV | Wrapper initializes after installing `clip`, but `data/synthetic/drop.mp4` returns 0 detections at current prompts and even at 0.01 confidence. Validate prompts on LOCO/real footage before relying on detector output. |
-| **CLIP text-model cache strategy unresolved for clean clone** | MEDIUM | CV | Local workspace cache exists at `models/.cache_home/.cache/clip/ViT-B-32.pt`, and code redirects YOLO-World there. It remains gitignored to avoid committing a large cache. Final packaging must decide how a clean offline clone receives this asset. |
+| **8 of 12 behaviours are stubs** | HIGH | CV | Real: B01, B02, B03, B07. Stubs returning `[]`: B04, B05, B06, B08, B09, B10, B11, B12 — **including B05/B06/B08, three of the six flagship "robust" behaviours**. Honest count today is **4**, not 10+. |
+| **Event graph does not exist** | HIGH | CV | `events/` has only `dedup.py`. The Temporal Event Graph is the *primary claimed novelty* in both source documents. |
+| **Ablations not runnable** | HIGH | CV | `pipeline.run()` takes no flags and never reads the `ablation:` block in `configs/behaviours.yaml`. `scripts/compare_ablations.py` only formats pre-saved CSVs. The innovation claim currently has no evidence behind it. |
+
+### Closed 8 Sep
+
+| Was | Finding |
+|---|---|
+| ~~"YOLO-World prompt validation not passing — 0 detections even at 0.01 conf"~~ | **Misdiagnosed. Prompts are fine.** Verified on real CCTV: `7_tr1.mp4` → **57 detections**, `4_te4.mp4` → **52**, correct classes (person / cardboard box / hand trolley). The 0-detection result happens **only on synthetic clips**, and it is expected and unfixable: `render_synthetic.py` draws flat coloured rectangles, and a model trained on photographs correctly refuses to call a grey rectangle a cardboard box. **Synthetic clips validate behaviour LOGIC via injected tracks; they can never validate perception.** Do not spend time tuning prompts. |
+
+---
+
+## Recording brief — READ THIS BEFORE FILMING
+
+Decision taken 8 Sep: **we record.** Without this footage, five of the six flagship
+behaviours (B01 drop, B02 throw, B05 improper stack, B06 unstable stack, B08 pallet
+overhang) have no real video to fire on, and the submission cannot claim they were
+demonstrated. Public CCTV only covers B07 and hard negatives.
+
+**Time: ~35 minutes. Two people. No warehouse needed.**
+
+### Kit
+
+| Item | Notes |
+|---|---|
+| 8–12 cardboard boxes | Amazon/delivery boxes fine. Need **at least 3 clearly large** and **5 small** — B05 needs a visible size difference |
+| 1 pallet substitute | Real pallet ideal. Otherwise a low wooden board, crate, or upturned tray. Note in `takes.csv` what you used |
+| 1 trolley substitute | Hand truck, luggage trolley, or office chair. Must be visibly *equipment*, not a box |
+| Masking tape | Mark zone boundaries on the floor |
+| Marker pen | **Write a big number on each box.** Massively helps tracking and annotation later |
+| Phone + tripod | Or prop it on a stack of books. **Never hand-hold** — camera shake creates fake velocity and fires false drops |
+
+### Camera setup
+
+- **Fixed position.** Does not move at all within a session.
+- Landscape, **1080p, 30 fps**.
+- Frame must contain: the **floor line**, the **pallet**, and the **full height a box is lifted to**. If the box leaves frame at the top, the drop is unmeasurable.
+- Good even light. No window or lamp directly behind the scene.
+- Tape two floor zones and note which is which:
+  - `staging` — products allowed
+  - `walkway` — products forbidden (this is what B07 fires on)
+
+### Session structure — this part matters most
+
+Record in **sessions**. A session = one unbroken camera position.
+Name every file `S{n}_{behaviour}_{take}.mp4` → e.g. `S1_drop_03.mp4`.
+
+| Session | Camera | Purpose |
+|---|---|---|
+| **S1** | Near, side-on, ~3 m | Primary tuning data |
+| **S2** | Far, side-on, ~6 m | Scale robustness |
+| **S3** | Elevated / angled ~30° | **HELD OUT. Never tuned on. Evaluated once, at the end.** |
+
+**Why sessions and not clips:** the train/test split is by *session*. Two takes of the
+same drop from the same camera position must never land on opposite sides of the split
+— that's leakage, and it's the first thing a judge probes. Recording in labelled
+sessions is what makes an honest split possible at all.
+
+S3 is the honesty artifact. Tuning on S1/S2 and reporting on S3 is the difference
+between a real number and one that gets dismantled.
+
+### Shot list — 3 takes minimum per behaviour per session
+
+Vary speed and box size between takes.
+
+| # | Behaviour | What to do | Priority |
+|---|---|---|---|
+| B01 | Drop | Lift box to chest height, release cleanly, let it hit the floor | **FLAGSHIP** |
+| B02 | Throw | Toss box sideways 1–2 m onto floor or pallet | **FLAGSHIP** |
+| B05 | Improper stack | Place a **large** box on top of a **small** one, leave it | **FLAGSHIP** |
+| B06 | Unstable stack | Stack boxes with big overhang / visible lean | **FLAGSHIP** |
+| B08 | Pallet overhang | Place box so ~half hangs off the pallet edge | **FLAGSHIP** |
+| B03 | Drag | Push/pull box along floor 2 m+ without lifting | secondary |
+| B07 | Zone violation | Place box in the taped `walkway` zone, leave 5 s+ | secondary |
+| B09 | Stepping on box | Step on a box, hold foot there 2 s+ | secondary |
+| B04 | Rough handling | Slam box down hard onto pallet; shove box into another | secondary |
+| B10 | Manual heavy lift | Carry the largest box alone, **no trolley in frame** | secondary |
+| B12 | Unsafe surface | Move box through the taped unsafe zone | secondary |
+| B11 | Unsafe sequence | Lift heavy box, move, place unstably — trolley visible but unused | secondary |
+
+**If short on time: shoot the five FLAGSHIP rows across S1 and S3 and stop.** Those are
+what the submission's headline claims rest on.
+
+### Hard negatives — do NOT skip
+
+**Most-skipped, highest-value part of the shoot.** Without these, every detector looks
+perfect because it never gets a chance to be wrong. These clips are what the
+false-positive rate is measured on.
+
+Record **5+ takes each**:
+
+| Clip | Must NOT fire |
+|---|---|
+| Gentle controlled placement | drop |
+| Carrying a box at knee height | drag |
+| Box moved on the trolley | drag, manual-handling |
+| Correct stack — small on large | improper stack |
+| Person walking past a box, no contact | stepping |
+| Box fully on pallet, well aligned | overhang |
+| Person briefly crossing the walkway | zone violation (transient) |
+| **Static scene, boxes at rest, 30 s** | anything at all |
+
+That last one is the single best demo asset you will record. *"Here is 30 seconds of
+normal operation and the system stayed silent"* answers the question every judge is
+privately asking.
+
+### Log every take — `data/raw/takes.csv`
+
+One line per take, written **at record time**. Reconstructing timestamps from footage
+afterwards takes hours; this takes seconds and is the input to every metric we report.
+
+```csv
+filename,session,behaviour,approx_start_s,approx_end_s,notes
+S1_drop_01.mp4,S1,drop,2.4,3.1,large box chest height
+S1_normal_01.mp4,S1,none,,,gentle placement
+```
+
+### Done when
+
+- [ ] 3 sessions from genuinely different camera positions
+- [ ] 5 flagship behaviours × 3 takes × at least S1 and S3
+- [ ] 8 hard-negative categories, 5 takes each
+- [ ] One 30 s+ fully-normal clip
+- [ ] `takes.csv` filled in
+- [ ] Files copied into `data/raw/` (gitignored — share via drive, never commit)
+
+Full original version with extra detail: `docs/RECORDING_GUIDE.md`.
 
 ---
 
 ## Next tasks
 
-Current queue (supersedes the historical numbered implementation plan below):
+**Queue rewritten 8 Sep after full audit at `26370d8`. This supersedes every
+numbered list below it** (those are kept only as historical record — most are done).
 
-1. Implement reproducible pipeline variant execution; the saved-prediction
-   comparison tool is complete (`docs/ABLATIONS.md`). Explicit smoothing and a
-   full event graph are not yet implemented; describe deduplication accurately.
-2. Add per-stage latency p50/p95 instrumentation.
-3. Complete B04-B06 and B08-B12, with positive and hard-negative tests.
-4. Validate prompts on public/real footage, package offline model assets, and
-   run S1/S2 validation followed by untouched S3 evaluation once footage exists.
-5. Finish offline demo startup, README, screenshots, slides and rehearsal.
+Deadline **10 Sep**. ~2 days. Blocks are ordered; within a block, items are parallel.
 
-Ordered. `types.py`, `config.py`, `geometry.py` are **done** (committed `00f0b03`).
-Pick up from here.
+### BLOCK 1 — unblock the demo (do first)
+1. **Offline model assets.** CLIP ViT-B-32 is 338 MB, over GitHub's 100 MB per-file
+   limit — plain `git add` will be rejected. Resolve via LFS / chunking / setup script,
+   then add a `scripts/demo.sh` preflight that hard-fails with a fix message if either
+   weight file is missing. *Check:* WiFi off, clean shell → pipeline runs.
+2. **Film** per *Recording brief* above. Unblocks everything in Block 5's claims.
+
+### BLOCK 2 — first real incident
+3. Trace zone polygons from an actual frame of `data/public/tune/walkway_violation/`,
+   add a `public_cam` entry to `configs/zones.yaml`, wire the camera id through.
+   *Check:* `0_tr1.mp4` produces ≥1 B07 incident. **First real detection this project
+   will ever have made.**
+
+### BLOCK 3 — close the scope gap (4 behaviours → 11)
+4. **B05, B06, B08** — static two-box geometry; `perception/geometry.py` already has
+   the primitives (`support_ratio`, overlap, area). Restores the flagship tier. → 7
+5. **B09, B12** — near-free. B12 is a zone lookup like B07; B09 is person-bottom-over-
+   product overlap. → 9
+6. **B04, B10** — conservative thresholds, labelled *lightly validated*. → 11
+   **Every detector: write the hard-negative test BEFORE the positive one.**
+
+### BLOCK 4 — evidence (what the judging actually rewards)
+7. Wire ablation flags into `pipeline.run(flags=...)` — `use_tracking=False` →
+   `NullTracker`, `use_smoothing=False` → raw single-frame velocity, `use_zones=False`
+   → skip zone assignment. Feed `scripts/compare_ablations.py`. *Check:* real deltas.
+8. Minimal `events/graph.py` — nodes = deduped events, edges = temporal-follows +
+   shares-track, `chains()`. Feeds the frequency risk component and the UI timeline.
+   This is what backs the novelty claim.
+9. Run evaluation on the heldout split → per-behaviour P/R/F1 **with n shown** →
+   `artifacts/evaluation/`. **Fill the claims ledger with whatever comes out.**
+10. Per-stage latency p50/p95.
+
+### BLOCK 5 — submission
+11. `README.md` — incl. **CC BY 4.0 attribution for both datasets** (license
+    obligation, not a nicety) and the honest robust / lightly-validated behaviour split.
+12. Screenshots → `artifacts/screenshots/`, 5–6 slide deck, demo recording.
+13. **Two offline rehearsals with WiFi off.**
+
+---
+
+## Historical task list (mostly done — kept for reference)
 
 ### IMMEDIATE NEXT — Lane A, unblocked, no footage needed
 
@@ -205,6 +365,7 @@ Pick up from here.
 
 | When | Who | What |
 |---|---|---|
+| 8 Sep | Claude | **Full audit at `26370d8`.** Verified by running, not reading: 92 tests pass; detector works on real CCTV (57 + 52 detections, correct classes); full pipeline runs end-to-end on real video at ~7.4 fps warm. Found: offline demo broken (338 MB runtime download), 8/12 behaviours are stubs, event graph absent, ablations unwired, 0 incidents on real footage (placeholder zones). **Closed the misdiagnosed prompt blocker** — prompts were never the problem. Queue rewritten; recording brief added. |
 | 7 Sep | Codex | Added saved-prediction ablation comparison CLI with manifest-relative paths, SHA-256 input fingerprints, per-behaviour metrics, micro deltas, JSON/Markdown output, and input overwrite protection. Fixed zero-IoU threshold matching unrelated/disjoint events. Added usage and experiment limitations in `docs/ABLATIONS.md`. Verification: 92 unit tests passed, including CLI subprocess tests, outside sandbox after temporary-directory permissions blocked sandbox runs. Weekly usage: 21% used, 79% remaining. Actual pipeline variant execution and real accuracy measurements remain pending. |
 | 7 Sep | Codex | Added P2 evaluation harness: `EventLabel`, greedy temporal-IoU matching by video/behaviour, per-behaviour and micro TP/FP/FN, precision/recall/F1, `n_gt`, `n_pred`, CSV and SQLite incident loaders, plus `scripts/evaluate_events.py`. Verification: `python -m pytest tests\unit -q` -> 83 passed; py_compile passed; CLI smoke against synthetic ground truth returned a valid JSON report; `npm run build` still passes. |
 | 7 Sep | Codex | Extracted offline assistant logic to `handleguard/assistant/templates.py` and wired `/chat` through it. Direct tests cover cited incident IDs/timestamps, exact empty-result wording, identity refusal, incident-id lookup, and loading guardrails from `configs/sop_rules.yaml`. Verification: `python -m pytest tests\unit -q` -> 81 passed; py_compile passed for assistant/API modules; `npm run build` still passes. |
