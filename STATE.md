@@ -23,19 +23,42 @@ Rules:
 
 ## Ownership
 
+Assigned 8 Sep from demonstrated work in git history, not guessed.
+
 | Lane | Directories | Owner |
 |---|---|---|
-| CV / behaviours | `handleguard/` | TBD |
-| Backend / API / DB | `apps/api/`, `handleguard/db/` | TBD |
-| Frontend / demo | `apps/web/`, `docs/`, `artifacts/` | TBD |
+| **A — CV / perception / infra** | `handleguard/{video,perception,tracking,features}`, `scripts/`, `models/`, `configs/` | **Akshat** (`akshatagrawal.work@gmail.com`) |
+| **B — Reasoning / evaluation** | `handleguard/{behaviours,events,risk,incidents,evaluation}`, `tests/` | **Anirudh** (`anirudhbadampudi@gmail.com`) |
+| **C — Product / demo** | `apps/api/`, `apps/web/`, `handleguard/{db,assistant}`, `artifacts/`, slides | **UNASSIGNED — third teammate, name needed** |
 
-Shared, coordinate before editing: `configs/`, `STATE.md`, `requirements.txt`.
+Shared, coordinate before editing: `configs/`, `STATE.md`, `TASK_SHEET.md`, `requirements.txt`.
+
+**Note:** git history shows only two contributors. Lane C is currently
+uncovered, and it owns the demo, screenshots and slides — i.e. everything the
+judges actually see. Until the third person is named, **Lane C work is split:
+Anirudh takes `apps/web` (already active there), Akshat takes `apps/api` +
+demo packaging.**
+
+### Remaining work is no longer three parallel lanes
+
+All twelve behaviours are implemented and the code is largely complete. What is
+left is mostly sequential and mostly gated on footage:
+
+| Work | Owner | Gated on |
+|---|---|---|
+| **Film S1/S2/S3** | Team — whoever is free first | Nothing. **This is the critical path.** |
+| Tune thresholds on S1/S2 | A + B together | Footage |
+| S3 held-out evaluation (run **once**) | B | Footage + tuning |
+| Ablation table on real footage | B | Footage |
+| Latency p50/p95 instrumentation | A | Nothing |
+| Screenshots, deck, demo recording | C | A working demo |
+| Two offline rehearsals | Team | Everything else |
 
 ---
 
 ## Deadline
 
-**10 September 2026.** Today is 7 September. **~3 days.**
+**10 September 2026.** Today is 8 September. **~2 days.**
 
 ---
 
@@ -114,7 +137,7 @@ storage out of band; they are never committed (size + privacy).
 |---|---|---|---|
 | **No real footage of drop / throw / stacking** | CRITICAL | unassigned | Public CCTV covers B07 + hard negatives only. B01/B02/B05/B06/B08 have no real video to fire on. **Decision taken 8 Sep: we record.** Full brief below — see *Recording brief*. ~35 min. |
 | **No behaviour has ever fired on real video** | HIGH | CV | Pipeline runs clean on real CCTV (8.1 s / 60 frames warm) but yields **0 incidents**. Zones are placeholders, and see the note below on why the public dataset cannot supply B07 ground truth. Real zone validation needs our own footage. |
-| **Lanes unassigned** | HIGH | team | All three rows in Ownership still say TBD. Assign before parallel work starts or you will collide. |
+| **Lane C has no owner** | HIGH | team | Git history shows only two contributors. Lane C owns the demo, screenshots and slides — everything the judges actually see. Interim split recorded in Ownership; name the third person or accept the split. |
 
 ### Closed 8 Sep
 
