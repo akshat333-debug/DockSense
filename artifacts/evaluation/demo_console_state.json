@@ -1,0 +1,71 @@
+{
+  "note": "Demo console state captured 8 Sep 2026. Incidents are SEEDED placeholders for UI development, not model output.",
+  "url": "http://127.0.0.1:8000 (single process: API + console, same origin)",
+  "stats": {
+    "total": 40,
+    "avg_risk": 60.125,
+    "max_risk": 90.0,
+    "avg_confidence": 0.745,
+    "counts_by_behaviour": {
+      "B01": 4,
+      "B02": 4,
+      "B03": 4,
+      "B04": 4,
+      "B05": 3,
+      "B06": 3,
+      "B07": 3,
+      "B08": 3,
+      "B09": 3,
+      "B10": 3,
+      "B11": 3,
+      "B12": 3
+    }
+  },
+  "sample_incidents": [
+    {
+      "id": "SEED-0005",
+      "behaviour_id": "B05",
+      "name": "improper_stack",
+      "start_t": 52.0,
+      "risk": 90.0,
+      "band": "critical",
+      "confidence": 0.83
+    },
+    {
+      "id": "SEED-0010",
+      "behaviour_id": "B10",
+      "name": "manual_heavy_handling",
+      "start_t": 107.0,
+      "risk": 90.0,
+      "band": "critical",
+      "confidence": 0.78
+    },
+    {
+      "id": "SEED-0004",
+      "behaviour_id": "B04",
+      "name": "rough_handling",
+      "start_t": 41.0,
+      "risk": 89.0,
+      "band": "critical",
+      "confidence": 0.76
+    },
+    {
+      "id": "SEED-0009",
+      "behaviour_id": "B09",
+      "name": "stepping",
+      "start_t": 96.0,
+      "risk": 89.0,
+      "band": "critical",
+      "confidence": 0.71
+    },
+    {
+      "id": "SEED-0003",
+      "behaviour_id": "B03",
+      "name": "drag",
+      "start_t": 30.0,
+      "risk": 88.0,
+      "band": "critical",
+      "confidence": 0.69
+    }
+  ]
+}

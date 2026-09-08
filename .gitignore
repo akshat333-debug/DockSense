@@ -2,6 +2,10 @@
 .DS_Store
 node_modules/
 dist/
+# ...but the built console IS committed: the demo must run offline from one
+# command, with no node and no npm install on the demo machine.
+!apps/web/dist/
+!apps/web/dist/**
 *.tsbuildinfo
 .env
 

@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from handleguard.assistant import answer_question
@@ -154,4 +155,23 @@ def _allowed_origins() -> list[str]:
     ]
 
 
+def mount_web_console(app: FastAPI) -> bool:
+    """Serve the built React console from the API itself.
+
+    The demo must run offline from one command. Serving `dist/` here means no
+    second process, no node, no `npm install`, and no CORS hop — the console is
+    same-origin with the API it calls. Mounted last so it never shadows an API
+    route.
+
+    Returns False when the bundle is absent, so the caller can say so plainly
+    rather than the demo silently coming up with no UI.
+    """
+    dist = Path(__file__).resolve().parent.parent / "web" / "dist"
+    if not (dist / "index.html").is_file():
+        return False
+    app.mount("/", StaticFiles(directory=str(dist), html=True), name="web")
+    return True
+
+
 app = create_app()
+WEB_CONSOLE_MOUNTED = mount_web_console(app)

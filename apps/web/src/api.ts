@@ -1,6 +1,9 @@
 import type { ChatResponse, Incident, IncidentListResponse, ReviewStatus, StatsResponse } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Served by the FastAPI app itself in the packaged demo, so default to
+// same-origin ("") rather than a hardcoded port. `npm run dev` still points at
+// the API via VITE_API_URL.
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 export function clipUrl(path: string): string {
   const clean = path.replace(/\\/g, "/").split("/").pop();

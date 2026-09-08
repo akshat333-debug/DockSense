@@ -32,9 +32,19 @@ if [[ "${1:-}" == "--check" ]]; then
   exit 0
 fi
 
+if [[ ! -f apps/web/dist/index.html ]]; then
+  echo
+  echo "FATAL: apps/web/dist is missing — the console would not be served." >&2
+  echo "The built bundle is committed; try 'git checkout apps/web/dist'." >&2
+  echo "To rebuild (needs node): cd apps/web && npm install && npm run build" >&2
+  exit 1
+fi
+
 echo "==> Seeding demo database"
 "$PY" scripts/seed_fake_incidents.py
 
-echo "==> Starting API on http://127.0.0.1:8000"
+echo
+echo "==> DockSense running at http://127.0.0.1:8000"
+echo "    Console and API are same-origin — one process, no node, no network."
 echo "    Ctrl-C to stop."
 exec "$PY" -m uvicorn apps.api.main:app --host 127.0.0.1 --port 8000
