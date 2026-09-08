@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, fields, replace
 from pathlib import Path
 from typing import Any, Protocol
@@ -14,6 +15,7 @@ from handleguard.events.graph import build_graph
 from handleguard.features.compute import FeatureExtractor
 from handleguard.incidents.builder import build_incident, incident_id_for
 from handleguard.incidents.media import write_evidence_assets
+from handleguard.metrics.latency import Timings
 from handleguard.risk.scorer import score_event
 from handleguard.tracking.tracker import NullTracker, Tracker
 from handleguard.types import Detection, Frame, Incident, Track
@@ -89,6 +91,7 @@ def run(
     write_clips: bool = True,
     max_frames: int | None = None,
     flags: PipelineFlags | None = None,
+    timings: Timings | None = None,
 ) -> list[Incident]:
     behaviour_cfg = config.behaviours()
     video_cfg = behaviour_cfg.get("video", {})
@@ -131,9 +134,12 @@ def run(
     for frame in iter_frames(video_path, inference_fps=inference_fps, max_res=(int(max_res[0]), int(max_res[1]))):
         if max_frames is not None and frame.index >= max_frames:
             break
-        dets = detector(frame)
-        tracks = tracker.update(dets, frame)
-        feats = feature_extractor.update(tracks, frame)
+        with _stage(timings, "detect"):
+            dets = detector(frame)
+        with _stage(timings, "track"):
+            tracks = tracker.update(dets, frame)
+        with _stage(timings, "features"):
+            feats = feature_extractor.update(tracks, frame)
         history.push(feats)
         dt = frame.t - prev_t if frame.index else 0.0
         prev_t = frame.t
@@ -150,9 +156,10 @@ def run(
             cfg=behaviour_cfg,
             recent_events=deduper.settled(),
         )
-        for behaviour in detectors:
-            for event in behaviour.update(ctx):
-                deduper.push(event)
+        with _stage(timings, "behaviours"):
+            for behaviour in detectors:
+                for event in behaviour.update(ctx):
+                    deduper.push(event)
 
     incidents = []
     evidence_cfg = behaviour_cfg.get("evidence", {})
@@ -174,18 +181,20 @@ def run(
                 event,
                 evidence={**event.evidence, "repeat_count": repeats},
             )
-        risk = score_event(event, contextual=flags.use_contextual_risk)
+        with _stage(timings, "risk"):
+            risk = score_event(event, contextual=flags.use_contextual_risk)
         incident_id = incident_id_for(event, video_id)
         clip_path = thumb_path = None
         if write_clips and clip_dir is not None:
-            assets = write_evidence_assets(
-                video_path,
-                event,
-                output_dir=clip_dir,
-                incident_id=incident_id,
-                pre_seconds=float(evidence_cfg.get("pre_event_seconds", 3.0)),
-                post_seconds=float(evidence_cfg.get("post_event_seconds", 4.0)),
-            )
+            with _stage(timings, "evidence"):
+                assets = write_evidence_assets(
+                    video_path,
+                    event,
+                    output_dir=clip_dir,
+                    incident_id=incident_id,
+                    pre_seconds=float(evidence_cfg.get("pre_event_seconds", 3.0)),
+                    post_seconds=float(evidence_cfg.get("post_event_seconds", 4.0)),
+                )
             clip_path = assets.clip_path
             thumb_path = assets.thumb_path
         incidents.append(
@@ -206,6 +215,16 @@ def run(
         for incident in incidents:
             store.add(incident)
     return incidents
+
+
+@contextmanager
+def _stage(timings: Timings | None, name: str):
+    """No-op when instrumentation is off, so the hot path pays nothing."""
+    if timings is None:
+        yield
+        return
+    with timings.stage(name):
+        yield
 
 
 def _history_seconds(cfg: dict[str, Any]) -> float:

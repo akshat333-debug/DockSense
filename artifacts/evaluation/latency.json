@@ -1,0 +1,47 @@
+{
+  "frames": 80,
+  "stages": [
+    {
+      "stage": "detect",
+      "count": 80,
+      "mean_ms": 75.65,
+      "p50_ms": 37.56,
+      "p95_ms": 78.74,
+      "max_ms": 2207.13,
+      "total_ms": 6052.39
+    },
+    {
+      "stage": "track",
+      "count": 80,
+      "mean_ms": 0.81,
+      "p50_ms": 0.48,
+      "p95_ms": 0.79,
+      "max_ms": 17.72,
+      "total_ms": 64.46
+    },
+    {
+      "stage": "features",
+      "count": 80,
+      "mean_ms": 0.07,
+      "p50_ms": 0.06,
+      "p95_ms": 0.09,
+      "max_ms": 0.21,
+      "total_ms": 5.3
+    },
+    {
+      "stage": "behaviours",
+      "count": 80,
+      "mean_ms": 0.02,
+      "p50_ms": 0.01,
+      "p95_ms": 0.03,
+      "max_ms": 0.06,
+      "total_ms": 1.33
+    }
+  ],
+  "total_ms": 6123.49,
+  "fps_end_to_end": 13.06,
+  "hardware": "Apple M3, 8 GB, MPS",
+  "input": "1920x1080 CCTV -> 1280x720, imgsz=640, inference_fps=8",
+  "clip": "data/public/tune/walkway_violation/0_tr1.mp4",
+  "incidents": 0
+}

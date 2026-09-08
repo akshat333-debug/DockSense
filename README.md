@@ -121,10 +121,21 @@ and destroys the demo.
 
 ## Honest scope
 
-**What is verified.** Detector on real industrial CCTV: 57 and 52 detections on
-sample clips, correctly classed (person / cardboard box / hand trolley). Full
-pipeline end-to-end on real video at ~7.4 fps warm on an M3/8 GB via MPS. 115
-tests pass. Offline operation verified with sockets blocked.
+**What is verified.** Measured on Apple M3 / 8 GB / MPS, 1920×1080 CCTV
+downscaled to 1280×720, `imgsz=640`:
+
+| Metric | Value |
+|---|---|
+| Detection latency p50 / p95 | **37.6 ms / 78.7 ms** (warmup excluded) |
+| End-to-end throughput | **13.1 fps** (offline batch, not real-time) |
+| Tracking + features + behaviours | **< 1 ms combined** |
+| Detections on real CCTV | 57 and 52 on sample frames, correctly classed |
+| Offline operation | verified with sockets blocked — zero outbound connections |
+| Tests | 130 passing |
+
+Full breakdown in `artifacts/evaluation/latency.json`. Detection is ~99% of
+pipeline time, which means **the temporal reasoning layer is effectively free** —
+the part that differentiates this system costs under a millisecond a frame.
 
 **What is not yet measured.** No per-behaviour precision/recall exists yet,
 because ground-truth footage of drops, throws and stacking has not been recorded.

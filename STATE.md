@@ -510,6 +510,28 @@ Deadline **10 Sep**. ~2 days. Blocks are ordered; within a block, items are para
 
 Every number that reaches the README or deck gets a row. No row, no claim.
 
+Hardware for every row below: **Apple M3, 8 GB, MPS**. Input: 1920×1080 CCTV
+downscaled to 1280×720, `imgsz=640`, `inference_fps=8`.
+
 | Claim | Measured? | Where measured | Value |
 |---|---|---|---|
-| _(empty)_ | | | |
+| Detection latency, p50 | ✅ 8 Sep | `artifacts/evaluation/latency.json`, 80 frames of `0_tr1.mp4` | **37.6 ms** |
+| Detection latency, p95 | ✅ 8 Sep | same | **78.7 ms** |
+| End-to-end throughput | ✅ 8 Sep | same | **13.1 fps** |
+| Tracking latency, p50 | ✅ 8 Sep | same | 0.5 ms |
+| Feature + behaviour latency, p50 | ✅ 8 Sep | same | ≈0.1 ms combined |
+| Detector on real industrial CCTV | ✅ 8 Sep | `7_tr1.mp4`, `4_te4.mp4`, one frame each | **57 and 52 detections**, classes person / cardboard box / hand trolley |
+| Offline operation | ✅ 8 Sep | pipeline run with `socket.connect` patched to raise | completes in 8.3 s, **zero outbound connections** |
+| Test suite | ✅ 8 Sep | `pytest -q` | **130 passing** |
+| Behaviours implemented | ✅ 8 Sep | `registry.build_all()` | **12 of 12, zero stubs** |
+| Per-behaviour precision / recall | ❌ **NOT MEASURED** | — | **Blocked on footage. Do not quote a number.** |
+| Ablation deltas on real video | ❌ **NOT MEASURED** | harness ready (`scripts/run_ablations.py`) | Blocked on footage |
+
+**Caveats that must travel with these numbers:**
+
+- The detect *mean* is 75.7 ms, skewed by a 2207 ms first-frame model warmup.
+  **Quote p50, not mean**, and say warmup is excluded.
+- Detection is ~99% of pipeline time. Tracking, features and behaviour reasoning
+  are together under 1 ms — the temporal layer is effectively free, which is a
+  genuinely good result and worth stating.
+- 13.1 fps is offline batch throughput, **not** a real-time claim.
