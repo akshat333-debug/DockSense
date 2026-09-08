@@ -18,6 +18,25 @@ IDENTITY_REFUSAL = (
     "I cannot identify, name, rank, or describe workers. I can summarize "
     "observed product-handling incidents with incident IDs and timestamps."
 )
+DAMAGE_UNCONFIRMED = (
+    "Damage cannot be confirmed from video. This system reports handling events "
+    "that carry a risk of damage; it does not observe damage itself. Inspect the "
+    "product to confirm. Related handling incidents:"
+)
+DAMAGE_UNCONFIRMED_NO_ROWS = (
+    "Damage cannot be confirmed from video. This system reports handling events "
+    "that carry a risk of damage; it does not observe damage itself. "
+    "No matching handling incidents were found for that query."
+)
+
+# Words that indicate the caller wants a broad listing rather than a filtered one.
+# Without this, an unrecognised question would fall through with no filters and
+# return the entire table, which reads as a confident answer to a question we did
+# not understand.
+_BROAD_REQUEST = (
+    "all", "every", "summar", "overview", "how many", "count", "today",
+    "shift", "recent", "latest", "list", "incident", "stat", "trend",
+)
 
 
 class IncidentReader(Protocol):
@@ -41,10 +60,45 @@ def answer_question(question: str, store: IncidentReader, *, limit: int = 10) ->
     if asks_for_identity(q):
         return AssistantAnswer(IDENTITY_REFUSAL, [])
 
+    if not _is_understood(q):
+        # We recognised no behaviour, band, zone, status, incident id, or broad
+        # listing request. Returning unfiltered rows here would answer a question
+        # we did not understand with data that looks responsive but is not.
+        return AssistantAnswer(NO_MATCHING_INCIDENTS, [])
+
     rows = _select_incidents(q, store, limit=limit)
+
+    if asks_about_damage(q):
+        # Guardrail: never let a damage question be answered by a list of
+        # handling events, which a reader can take as confirmation.
+        if not rows:
+            return AssistantAnswer(DAMAGE_UNCONFIRMED_NO_ROWS, [])
+        return AssistantAnswer(
+            DAMAGE_UNCONFIRMED + "\n" + _render_incident_lines(rows),
+            [row.id for row in rows[:5]],
+        )
+
     if not rows:
         return AssistantAnswer(NO_MATCHING_INCIDENTS, [])
     return AssistantAnswer(_render_incident_lines(rows), [row.id for row in rows[:5]])
+
+
+def asks_about_damage(question: str) -> bool:
+    return bool(re.search(r"\b(damag\w*|broken|destroy\w*|ruin\w*)\b", question.lower()))
+
+
+def _is_understood(question: str) -> bool:
+    """Did we recognise anything concrete to filter on?"""
+    q = question.lower()
+    return bool(
+        _incident_id_from_text(question)
+        or _behaviour_from_text(q)
+        or _review_status_from_text(q)
+        or _zone_from_text(q)
+        or asks_about_damage(q)
+        or any(w in q for w in ("critical", "high", "medium", "low", "risk"))
+        or any(w in q for w in _BROAD_REQUEST)
+    )
 
 
 def asks_for_identity(question: str) -> bool:
