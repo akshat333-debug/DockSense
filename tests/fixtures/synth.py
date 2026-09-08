@@ -154,3 +154,136 @@ def scenario_transient_zone_crossing() -> FrameContext:
         feat(t=1.0, cx=0.47, cy=0.70, floor_gap=0.0, zone="walkway"),
     ]
     return make_ctx(values)
+
+
+# --- multi-track scenarios -------------------------------------------------
+#
+# B05/B06/B08/B09 are relations *between* tracks, so they need more than the
+# single-track context above. Boxes are given as pixel xyxy because these
+# behaviours are static geometry; the detectors read them only through the
+# shared helpers in behaviours.base, never directly.
+
+
+def make_multi_ctx(
+    tracks: list[Track],
+    per_track_features: dict[int, list[TrackFeatures]],
+    *,
+    cfg: dict | None = None,
+) -> FrameContext:
+    """Build a FrameContext holding several interacting tracks."""
+    history = TrackHistory(max_seconds=10.0)
+    length = max(len(v) for v in per_track_features.values())
+    for i in range(length):
+        step = {
+            tid: feats[i]
+            for tid, feats in per_track_features.items()
+            if i < len(feats)
+        }
+        history.push(step)
+
+    latest = {tid: feats[-1] for tid, feats in per_track_features.items()}
+    now = max(f.t for f in latest.values())
+    return FrameContext(
+        frame_index=length - 1,
+        t=now,
+        dt=0.5,
+        fw=FW,
+        fh=FH,
+        tracks={t.id: t for t in tracks},
+        feats=latest,
+        history=history,
+        cfg=cfg or {},
+    )
+
+
+def _static_feats(track_id: int, cx: float, cy: float, h_px: float, n: int = 8, step: float = 0.5):
+    """A track that sits still — the sustained-duration case."""
+    return [feat(track_id=track_id, t=i * step, cx=cx, cy=cy, h_px=h_px) for i in range(n)]
+
+
+def _stack(upper_box, lower_box, *, upper_h, lower_h, n=8):
+    upper = synth_track(track_id=1, xyxy=upper_box)
+    lower = synth_track(track_id=2, xyxy=lower_box)
+    return make_multi_ctx(
+        [upper, lower],
+        {
+            1: _static_feats(1, 0.5, 0.4, upper_h, n=n),
+            2: _static_feats(2, 0.5, 0.6, lower_h, n=n),
+        },
+    )
+
+
+def scenario_improper_stack() -> FrameContext:
+    """Large box (200x120) resting on a small one (100x60). B05 must fire."""
+    return _stack((400, 300, 600, 420), (450, 420, 550, 480), upper_h=120, lower_h=60)
+
+
+def scenario_correct_stack() -> FrameContext:
+    """HARD NEGATIVE: small box on a large one. B05 must stay silent."""
+    return _stack((450, 360, 550, 420), (400, 420, 600, 540), upper_h=60, lower_h=120)
+
+
+def scenario_unstable_stack() -> FrameContext:
+    """Upper box overhangs badly — only a sliver is supported. B06 must fire."""
+    return _stack((520, 300, 680, 420), (400, 420, 560, 540), upper_h=120, lower_h=120)
+
+
+def scenario_stable_stack() -> FrameContext:
+    """HARD NEGATIVE: fully supported and aligned. B06 must stay silent."""
+    return _stack((410, 300, 590, 420), (400, 420, 600, 540), upper_h=120, lower_h=120)
+
+
+def _pallet(product_box, pallet_box, n=8):
+    product = synth_track(track_id=1, xyxy=product_box)
+    pallet = synth_track(track_id=2, cls="pallet", role="support", xyxy=pallet_box)
+    return make_multi_ctx(
+        [product, pallet],
+        {1: _static_feats(1, 0.5, 0.5, 120, n=n), 2: _static_feats(2, 0.5, 0.6, 40, n=n)},
+    )
+
+
+def scenario_pallet_overhang() -> FrameContext:
+    """Product hangs half off the pallet edge. B08 must fire."""
+    return _pallet((500, 400, 700, 520), (400, 400, 600, 560))
+
+
+def scenario_pallet_well_supported() -> FrameContext:
+    """HARD NEGATIVE: product sits fully within the pallet. B08 must stay silent."""
+    return _pallet((430, 400, 570, 520), (400, 400, 600, 560))
+
+
+def _person_product(person_box, product_box, n=8):
+    person = synth_track(track_id=1, cls="person", role="actor", xyxy=person_box)
+    product = synth_track(track_id=2, xyxy=product_box)
+    return make_multi_ctx(
+        [person, product],
+        {1: _static_feats(1, 0.5, 0.4, 300, n=n), 2: _static_feats(2, 0.5, 0.7, 60, n=n)},
+    )
+
+
+def scenario_stepping_on_product() -> FrameContext:
+    """Person's feet land on the carton's top face. B09 must fire."""
+    return _person_product((480, 200, 580, 500), (460, 480, 620, 560))
+
+
+def scenario_walking_past_product() -> FrameContext:
+    """HARD NEGATIVE: person beside the carton, no contact. B09 must stay silent."""
+    return _person_product((200, 200, 300, 500), (460, 480, 620, 560))
+
+
+def scenario_unsafe_surface() -> FrameContext:
+    """Product lingers in a wet-floor zone. B12 must fire."""
+    values = [
+        feat(t=i * 0.5, cx=0.45, cy=0.70, floor_gap=0.0, zone="wet_floor")
+        for i in range(6)
+    ]
+    return make_ctx(values)
+
+
+def scenario_safe_surface() -> FrameContext:
+    """HARD NEGATIVE: same dwell, but the zone is a normal staging area."""
+    values = [
+        feat(t=i * 0.5, cx=0.45, cy=0.70, floor_gap=0.0, zone="staging")
+        for i in range(6)
+    ]
+    return make_ctx(values)

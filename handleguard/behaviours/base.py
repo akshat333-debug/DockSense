@@ -93,14 +93,21 @@ class FrameContext:
                 out.append(other_id)
         return out
 
-    def below(self, track_id: int) -> list[int]:
+    def below(self, track_id: int, min_overlap: float = 0.3) -> list[int]:
+        """Tracks directly supporting this one.
+
+        ``min_overlap`` is the share of this box's width that must sit over the
+        candidate. Stability detectors should pass a *low* value: a box hanging
+        off by 80% is the most dangerous case there is, and the default 0.3 would
+        hide it entirely by declaring the pair unrelated.
+        """
         base = self.tracks[track_id]
         out: list[int] = []
         for other_id, other in self.tracks.items():
             if other_id == track_id:
                 continue
             max_gap = max(base.height * 0.15, 2.0)
-            if g.is_above(base.xyxy, other.xyxy, max_gap=max_gap):
+            if g.is_above(base.xyxy, other.xyxy, max_gap=max_gap, min_overlap=min_overlap):
                 out.append(other_id)
         return out
 
@@ -162,6 +169,71 @@ def confidence_from(margin: float, track_conf: float) -> float:
     """Shared confidence helper for detector decisions."""
     margin_score = max(0.0, min(float(margin), 1.0))
     return max(0.0, min(0.35 + 0.45 * margin_score + 0.20 * float(track_conf), 1.0))
+
+
+def sustained_seconds(window: Sequence[TrackFeatures], predicate) -> float:
+    """Seconds over which ``predicate`` held continuously up to the latest sample.
+
+    Static-geometry behaviours (stacking, overhang, stepping) must persist before
+    they are worth reporting — a box passing through frame is not a bad stack.
+    Walking backwards from the newest sample keeps a momentary earlier match from
+    inflating the span.
+    """
+    if len(window) < 2:
+        return 0.0
+    end_t = window[-1].t
+    start_t = end_t
+    for feat in reversed(window):
+        if not predicate(feat):
+            break
+        start_t = feat.t
+    return max(end_t - start_t, 0.0)
+
+
+def stack_pair(ctx: "FrameContext", upper_id: int, lower_id: int) -> tuple[float, float, float]:
+    """Geometry of an upper box resting on a lower one.
+
+    Returns ``(area_ratio, overlap_x_ratio, support_ratio)``:
+
+    - ``area_ratio``    upper box area / lower box area. A **size proxy for weight**;
+                        we cannot see mass, so anything derived from this must be
+                        described as size-based, never as weight.
+    - ``overlap_x_ratio`` shared width / upper width — how much of the upper box sits
+                        over the lower one at all.
+    - ``support_ratio`` fraction of the upper box actually supported from below.
+
+    Detectors call this instead of touching ``xyxy``, keeping rule 3 intact.
+    """
+    upper = ctx.tracks[upper_id].xyxy
+    lower = ctx.tracks[lower_id].xyxy
+    lower_area = max(g.area(lower), 1e-6)
+    upper_width = max(g.width(upper), 1e-6)
+    return (
+        g.area(upper) / lower_area,
+        g.horizontal_overlap(upper, lower) / upper_width,
+        g.support_ratio(upper, lower),
+    )
+
+
+def supported_fraction(ctx: "FrameContext", product_id: int, support_id: int) -> float:
+    """Fraction of the product's footprint that sits within its support."""
+    return g.support_fraction(ctx.tracks[product_id].xyxy, ctx.tracks[support_id].xyxy)
+
+
+def foot_overlap(ctx: "FrameContext", person_id: int, product_id: int) -> float:
+    """Overlap between a person's foot region and a product's upper surface.
+
+    Approximates contact without pose estimation: the bottom sliver of the person
+    box against the top sliver of the product box. Deliberately geometric — this
+    reports *spatial contact*, never intent.
+    """
+    person = ctx.tracks[person_id].xyxy
+    product = ctx.tracks[product_id].xyxy
+    px0, _, px2, py3 = person[0], person[1], person[2], person[3]
+    foot = (px0, py3 - max(g.height(person) * 0.12, 1.0), px2, py3)
+    qx0, qy1, qx2, _ = product
+    top = (qx0, qy1, qx2, qy1 + max(g.height(product) * 0.35, 1.0))
+    return g.intersection_area(foot, top) / max(g.area(foot), 1e-6)
 
 
 def travel_heights(window: Sequence[TrackFeatures], frame_h: int) -> tuple[float, float, float]:
