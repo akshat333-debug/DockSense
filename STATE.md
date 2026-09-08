@@ -522,7 +522,11 @@ downscaled to 1280×720, `imgsz=640`, `inference_fps=8`.
 | Feature + behaviour latency, p50 | ✅ 8 Sep | same | ≈0.1 ms combined |
 | Detector on real industrial CCTV | ✅ 8 Sep | `7_tr1.mp4`, `4_te4.mp4`, one frame each | **57 and 52 detections**, classes person / cardboard box / hand trolley |
 | Offline operation | ✅ 8 Sep | pipeline run with `socket.connect` patched to raise | completes in 8.3 s, **zero outbound connections** |
-| Test suite | ✅ 8 Sep | `pytest -q` | **130 passing** |
+| Test suite | ✅ 8 Sep | `pytest -q` | **133 passing** |
+| Clean-clone install | ✅ 8 Sep | fresh `git clone` to a temp dir, then `setup_offline.py` + `demo.sh --check` | **works — all assets present, CLIP reassembled, preflight OK** |
+| Clean clone runs offline | ✅ 8 Sep | same clone, pipeline with `socket.connect` patched to raise | **ran in 7.4 s, zero network calls** |
+| Repo size (clean clone) | ✅ 8 Sep | `du -sh` | 700 MB (detector 25 MB + CLIP chunks 338 MB + console 216 KB) |
+| Demo console | ✅ 8 Sep | browser at `/` | renders; filters, separate risk/confidence columns, review controls, assistant panel; **12 behaviours shown** |
 | Behaviours implemented | ✅ 8 Sep | `registry.build_all()` | **12 of 12, zero stubs** |
 | Per-behaviour precision / recall | ❌ **NOT MEASURED** | — | **Blocked on footage. Do not quote a number.** |
 | Ablation deltas on real video | ❌ **NOT MEASURED** | harness ready (`scripts/run_ablations.py`) | Blocked on footage |
