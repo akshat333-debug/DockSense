@@ -8,10 +8,24 @@ from handleguard import config
 from handleguard.types import BehaviourEvent, RiskScore
 
 
-def score_event(event: BehaviourEvent, cfg: dict[str, Any] | None = None) -> RiskScore:
+def score_event(
+    event: BehaviourEvent,
+    cfg: dict[str, Any] | None = None,
+    *,
+    contextual: bool = True,
+) -> RiskScore:
+    """Score one deduplicated event.
+
+    ``contextual=False`` is the ablation: risk collapses to behaviour severity
+    alone, discarding kinematics, support geometry, duration, recurrence and
+    zone. That is the "a drop is a drop" baseline the contextual model is
+    supposed to beat, so it has to be runnable to be worth claiming.
+    """
     cfg = cfg or config.risk_weights()
     weights = {k: float(v) for k, v in cfg.get("weights", {}).items()}
     components = _components(event, cfg)
+    if not contextual:
+        components = {"behaviour_severity": components["behaviour_severity"]}
     active_weights = {k: weights[k] for k in components if k in weights and weights[k] > 0}
     total = sum(active_weights.values())
     if total <= 0:

@@ -28,6 +28,15 @@ class EventDeduper:
             self._closed.append(existing)
             self._active[key] = event
 
+    def settled(self) -> list[BehaviourEvent]:
+        """Events already closed by a cooldown, without draining anything.
+
+        Detectors that reason over history (B11 sequence) and the recurrence risk
+        component need to see earlier events mid-run. Only closed events are
+        exposed: an event still merging would report a moving end time.
+        """
+        return list(self._closed)
+
     def flush(self) -> list[BehaviourEvent]:
         out = self._closed + list(self._active.values())
         self._closed = []

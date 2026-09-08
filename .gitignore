@@ -28,6 +28,7 @@ data/test_tmp/*
 data/synthetic/*
 !data/**/.gitkeep
 !data/raw/takes.csv
+!data/synthetic/ground_truth.csv
 # Detector weights ARE committed — the offline demo depends on them being
 # in the clone. Only ignore incidental checkpoints from elsewhere.
 models/**/checkpoints/
