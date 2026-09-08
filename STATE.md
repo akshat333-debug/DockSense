@@ -69,9 +69,26 @@ synthetic vertical slice:
 - `handleguard/evaluation/metrics.py` + `scripts/evaluate_events.py` — temporal-IoU
   event evaluation with per-behaviour TP/FP/FN, precision, recall, F1, and n.
 
-**Real footage is still missing. YOLO-World prompt validation is still not passing
-on procedural synthetic clips, so the end-to-end unit test uses deterministic fake
-detections.**
+Added 8 Sep:
+
+- **All 12 behaviour detectors implemented, zero stubs.** Each has a positive test
+  and a named hard negative.
+- `handleguard/events/graph.py` — the Temporal Event Graph. Relates deduplicated
+  events by FOLLOWS / SHARES_TRACK / RECURS; `chains()` gives per-entity stories,
+  `recurrence()` feeds the frequency risk component so a third drop of the same
+  carton outscores the first.
+- `PipelineFlags` + `scripts/run_ablations.py` — the ablation switches are now
+  wired to real mechanisms and executable end to end.
+- `models/clip_parts/` + `scripts/setup_offline.py` + `scripts/demo.sh` — offline
+  operation, verified with sockets blocked.
+- `README.md` — with the CC BY 4.0 attribution both datasets require.
+
+**123 tests pass.**
+
+**Still missing: real footage of drops / throws / stacking.** Behaviour *logic* is
+tested against injected synthetic tracks; perception is verified on real CCTV. What
+does not exist yet is real video where those two meet, which is what every
+per-behaviour metric and every "robustly demonstrated" claim depends on.
 
 ---
 
@@ -98,16 +115,13 @@ storage out of band; they are never committed (size + privacy).
 | **No real footage of drop / throw / stacking** | CRITICAL | unassigned | Public CCTV covers B07 + hard negatives only. B01/B02/B05/B06/B08 have no real video to fire on. **Decision taken 8 Sep: we record.** Full brief below — see *Recording brief*. ~35 min. |
 | **No behaviour has ever fired on real video** | HIGH | CV | Pipeline runs clean on real CCTV (8.1 s / 60 frames warm) but yields **0 incidents**. Zones are placeholders, and see the note below on why the public dataset cannot supply B07 ground truth. Real zone validation needs our own footage. |
 | **Lanes unassigned** | HIGH | team | All three rows in Ownership still say TBD. Assign before parallel work starts or you will collide. |
-| **3 of 12 behaviours still stubs** | MEDIUM | CV | Remaining: **B04** (rough handling), **B10** (manual heavy handling), **B11** (unsafe sequence) — the three identified during planning as weakest. 9 implemented. |
-| **Event graph does not exist** | HIGH | CV | `events/` has only `dedup.py`. The Temporal Event Graph is the *primary claimed novelty* in both source documents. |
-| **Ablations not runnable** | HIGH | CV | `pipeline.run()` takes no flags and never reads the `ablation:` block in `configs/behaviours.yaml`. `scripts/compare_ablations.py` only formats pre-saved CSVs. The innovation claim currently has no evidence behind it. |
 
 ### Closed 8 Sep
 
 | Was | Finding |
 |---|---|
 | ~~"Offline demo broken — 338 MB CLIP downloads at runtime"~~ | **Fixed.** CLIP ships as four ~90 MiB chunks in `models/clip_parts/` (338 MB is over GitHub's 100 MB per-file limit; LFS would add tooling plus a 1 GB/month cap ≈ 3 clones). `scripts/setup_offline.py` reassembles with a SHA256 check; `scripts/demo.sh` reassembles then hard-fails with a fix message rather than silently downloading mid-demo. **Verified with `socket.connect` patched to raise: pipeline completes on real CCTV in 8.3 s with zero outbound connections.** |
-| ~~"8 of 12 behaviours are stubs"~~ | **9 of 12 now implemented.** B05, B06, B08, B09, B12 added 8 Sep, each with a positive test and a named hard negative. Flagship tier complete. |
+| ~~"8 of 12 behaviours are stubs"~~ | **All 12 implemented, zero stubs.** B05/B06/B08/B09/B12 then B04/B10/B11 added 8 Sep, each with a positive test and a named hard negative. B04 and B10 carry suppression logic (defer to B01/B02; go silent when equipment is visible) so the weak three do not generate noise. |
 | ~~"YOLO-World prompt validation not passing — 0 detections even at 0.01 conf"~~ | **Misdiagnosed. Prompts are fine.** Verified on real CCTV: `7_tr1.mp4` → **57 detections**, `4_te4.mp4` → **52**, correct classes (person / cardboard box / hand trolley). The 0-detection result happens **only on synthetic clips**, and it is expected and unfixable: `render_synthetic.py` draws flat coloured rectangles, and a model trained on photographs correctly refuses to call a grey rectangle a cardboard box. **Synthetic clips validate behaviour LOGIC via injected tracks; they can never validate perception.** Do not spend time tuning prompts. |
 
 ---
@@ -396,6 +410,7 @@ Deadline **10 Sep**. ~2 days. Blocks are ordered; within a block, items are para
 
 | When | Who | What |
 |---|---|---|
+| 8 Sep | Claude | **All 12 behaviours implemented (B04/B10/B11 completed), ablation flags wired, temporal event graph added, README written.** 123 tests pass. B04 defers to B01/B02 and B10 goes silent when equipment is visible, so the weak three don't generate noise they can't justify. |
 | 8 Sep | Claude | **B05/B06/B08/B09/B12 implemented — 4 behaviours to 9.** Shared geometry helpers added to `base.py` so detectors never touch raw `xyxy` (enforced by test). Fixed a real defect: `below()` used `is_above`'s default `min_overlap=0.3`, making a box overhanging >70% invisible to B06 — the most dangerous stack was the one it couldn't see. 103 tests pass. |
 | 8 Sep | Claude | **Offline demo fixed.** CLIP shipped as 4 chunks + SHA256-checked reassembly + `demo.sh` preflight. Verified with sockets blocked: 8.3 s run, zero network calls. |
 | 8 Sep | Claude | **Public dataset cannot supply B07 ground truth** — see *Data semantics* note below. Used for detector validation and hard negatives only. |

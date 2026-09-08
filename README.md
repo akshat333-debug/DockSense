@@ -88,20 +88,28 @@ pytest -q
 
 ## Behaviours
 
-| ID | Behaviour | Status |
-|---|---|---|
-| B01 | Product dropped | Implemented |
-| B02 | Product thrown | Implemented |
-| B03 | Product dragged | Implemented |
-| B05 | Improper stack (large on small) | Implemented |
-| B06 | Unstable stack (insufficient support) | Implemented |
-| B07 | Product outside designated zone | Implemented |
-| B08 | Pallet overhang | Implemented |
-| B09 | Stepping on product | Implemented |
-| B12 | Movement through unsafe-surface zone | Implemented |
-| B04 | Rough handling | **Stub** |
-| B10 | Large item handled without equipment present | **Stub** |
-| B11 | Unsafe loading sequence | **Stub** |
+All twelve are implemented. They are **not equally trustworthy**, and the table
+says which is which.
+
+| ID | Behaviour | Basis | Confidence in it |
+|---|---|---|---|
+| B01 | Product dropped | Vertical kinematics + impact deceleration | Strong |
+| B02 | Product thrown | Horizontal velocity while unsupported | Strong |
+| B05 | Improper stack (large on small) | Two-box area + overlap geometry | Strong |
+| B06 | Unstable stack | Support ratio below threshold, sustained | Strong |
+| B07 | Product outside designated zone | Zone polygon + dwell time | Strong |
+| B08 | Pallet overhang | Product footprint vs pallet footprint | Strong |
+| B03 | Product dragged | Floor proximity + horizontal travel | Moderate |
+| B09 | Stepping on product | Box contact geometry, no pose model | Moderate |
+| B12 | Unsafe-surface zone | Operator-configured zone, not visual | Moderate |
+| B04 | Rough handling | Acceleration proxy — sensitive to tracker jitter, overlaps B01/B02 | **Lightly validated** |
+| B10 | Large item handled without equipment present | Size proxy; **weight is not observable from video** | **Lightly validated** |
+| B11 | Unsafe loading sequence | Ordered event pairs; inherits all upstream error | **Lightly validated** |
+
+The three *lightly validated* rows are proxy heuristics with confounds we can
+name, so we name them. B04 suppresses itself when B01/B02 already claimed the
+entity, and B10 goes silent as soon as handling equipment is visible — both to
+stop them generating noise they cannot justify.
 
 Each implemented detector has a positive test **and a named hard negative** —
 gentle placement must not fire drop, carrying at knee height must not fire drag,
