@@ -7,6 +7,8 @@ model outputs and must not be used as evaluation numbers.
 
 from __future__ import annotations
 
+import argparse
+
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
@@ -107,9 +109,22 @@ def _band(score: float) -> str:
 
 
 def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "processed" / "incidents.db"
-    seed(path)
-    print(f"seeded 40 placeholder incidents into {path}")
+    ap = argparse.ArgumentParser(
+        description="Seed clearly-labelled placeholder incidents for UI development."
+    )
+    ap.add_argument(
+        "path",
+        nargs="?",
+        type=Path,
+        default=ROOT / "data" / "processed" / "incidents.db",
+        help="SQLite database to write (default: data/processed/incidents.db)",
+    )
+    ap.add_argument("-n", "--count", type=int, default=40, help="incidents to create")
+    args = ap.parse_args()
+
+    seed(args.path, n=args.count)
+    print(f"seeded {args.count} placeholder incidents into {args.path}")
+    print("These are NOT model output. Every row says so in its explanation.")
     return 0
 
 

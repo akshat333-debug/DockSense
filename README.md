@@ -84,6 +84,21 @@ python scripts/evaluate_events.py --predictions-db handleguard.db
 pytest -q
 ```
 
+### API
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | liveness |
+| GET | `/incidents` | list, with `behaviour_id` / `name` / `min_risk` / `band` / `review_status` / `zone` / `limit` filters |
+| GET | `/incidents/{id}` | one incident with full evidence |
+| PATCH | `/incidents/{id}/review` | supervisor disposition + note |
+| GET | `/stats` | totals and per-behaviour counts |
+| GET | `/clips/{file}` | evidence clip or thumbnail |
+| POST | `/chat` | grounded assistant |
+
+The built console is served from `/` by the same process, so the demo is one
+command with no second server and no CORS hop.
+
 ---
 
 ## Behaviours
@@ -131,7 +146,7 @@ downscaled to 1280×720, `imgsz=640`:
 | Tracking + features + behaviours | **< 1 ms combined** |
 | Detections on real CCTV | 57 and 52 on sample frames, correctly classed |
 | Offline operation | verified with sockets blocked — zero outbound connections |
-| Tests | 130 passing |
+| Tests | 140 passing |
 
 Full breakdown in `artifacts/evaluation/latency.json`. Detection is ~99% of
 pipeline time, which means **the temporal reasoning layer is effectively free** —
@@ -160,8 +175,13 @@ object-relative by design.
 ## Responsible AI
 
 - **Behaviour, not identity.** No face recognition, no re-identification, no
-  worker names, no ranking. Optional Gaussian blur over the upper region of
-  person boxes in stored clips.
+  worker names, no ranking. Stored evidence clips blur the upper 25% of every
+  detected person box (`configs/behaviours.yaml` → `privacy.blur_faces`,
+  on by default). Deliberately *not* face detection: running a face detector to
+  decide what to blur would build the exact capability we say we do not have,
+  and it fails open — an undetected face is an unblurred face. This **reduces
+  identifiability; it is not anonymisation** — gait, clothing and context
+  remain.
 - **Observed / inferred / confirmed are kept distinct.** The system reports what
   it observed and what risk it inferred. It never claims damage occurred.
 - **No intent inference.** B10 is named *"large item handled without equipment

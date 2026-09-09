@@ -1,4 +1,4 @@
-# STATE — HandleGuard AI
+# STATE — DockSense
 
 Relay handoff file. **Read this first, update it last.**
 
@@ -58,7 +58,7 @@ left is mostly sequential and mostly gated on footage:
 
 ## Deadline
 
-**10 September 2026.** Today is 8 September. **~2 days.**
+**10 September 2026.** Today is 9 September. **~1 day.**
 
 ---
 
@@ -106,7 +106,15 @@ Added 8 Sep:
   operation, verified with sockets blocked.
 - `README.md` — with the CC BY 4.0 attribution both datasets require.
 
-**123 tests pass.**
+Added 9 Sep (full audit pass):
+
+- `handleguard/privacy/` — **was an empty directory while README, project.md and
+  plan.md all claimed face blurring.** Now implemented and wired into the evidence
+  clip writer, on by default via `privacy.blur_faces`.
+- Per-stage latency instrumentation with real measured numbers.
+- Console served from the API at `/`; demo is one offline command.
+
+**140 tests pass.**
 
 **Still missing: real footage of drops / throws / stacking.** Behaviour *logic* is
 tested against injected synthetic tracks; perception is verified on real CCTV. What
@@ -299,140 +307,38 @@ Full original version with extra detail: `docs/RECORDING_GUIDE.md`.
 
 ## Next tasks
 
-**Queue rewritten 8 Sep after full audit at `26370d8`. This supersedes every
-numbered list below it** (those are kept only as historical record — most are done).
+Rewritten 9 Sep after a full file-wise and flow-wise audit. Blocks 1-4 of the
+previous list are complete.
 
-Deadline **10 Sep**. ~2 days. Blocks are ordered; within a block, items are parallel.
+### THE ONLY CRITICAL-PATH ITEM
 
-### BLOCK 1 — unblock the demo (do first)
-1. **Offline model assets.** CLIP ViT-B-32 is 338 MB, over GitHub's 100 MB per-file
-   limit — plain `git add` will be rejected. Resolve via LFS / chunking / setup script,
-   then add a `scripts/demo.sh` preflight that hard-fails with a fix message if either
-   weight file is missing. *Check:* WiFi off, clean shell → pipeline runs.
-2. **Film** per *Recording brief* above. Unblocks everything in Block 5's claims.
+1. **Film S1/S2/S3.** ~35 min. See *Recording brief* below.
+   Everything else is done or cosmetic. Without this the submission has **zero
+   per-behaviour precision/recall**, and five of the six flagship behaviours have
+   never fired on real video. This is the single thing standing between "built"
+   and "measured", and measurement is what the judging rewards.
 
-### BLOCK 2 — first real incident
-3. Trace zone polygons from an actual frame of `data/public/tune/walkway_violation/`,
-   add a `public_cam` entry to `configs/zones.yaml`, wire the camera id through.
-   *Check:* `0_tr1.mp4` produces ≥1 B07 incident. **First real detection this project
-   will ever have made.**
+### Once footage exists (in order)
 
-### BLOCK 3 — close the scope gap (4 behaviours → 11)
-4. **B05, B06, B08** — static two-box geometry; `perception/geometry.py` already has
-   the primitives (`support_ratio`, overlap, area). Restores the flagship tier. → 7
-5. **B09, B12** — near-free. B12 is a zone lookup like B07; B09 is person-bottom-over-
-   product overlap. → 9
-6. **B04, B10** — conservative thresholds, labelled *lightly validated*. → 11
-   **Every detector: write the hard-negative test BEFORE the positive one.**
+2. Draw zones on the real scene → `configs/zones.yaml`. *Check:* a clip produces ≥1 incident.
+3. Tune thresholds on **S1/S2 only**. Log which session in the Decisions log.
+4. Run S3 **exactly once**: `python scripts/evaluate_events.py`. Report as measured.
+5. Ablation table on real video: `python scripts/run_ablations.py`.
+6. Fill the claims ledger with whatever comes out, good or bad.
 
-### BLOCK 4 — evidence (what the judging actually rewards)
-7. Wire ablation flags into `pipeline.run(flags=...)` — `use_tracking=False` →
-   `NullTracker`, `use_smoothing=False` → raw single-frame velocity, `use_zones=False`
-   → skip zone assignment. Feed `scripts/compare_ablations.py`. *Check:* real deltas.
-8. Minimal `events/graph.py` — nodes = deduped events, edges = temporal-follows +
-   shares-track, `chains()`. Feeds the frequency risk component and the UI timeline.
-   This is what backs the novelty claim.
-9. Run evaluation on the heldout split → per-behaviour P/R/F1 **with n shown** →
-   `artifacts/evaluation/`. **Fill the claims ledger with whatever comes out.**
-10. Per-stage latency p50/p95.
+### Not gated on footage
 
-### BLOCK 5 — submission
-11. `README.md` — incl. **CC BY 4.0 attribution for both datasets** (license
-    obligation, not a nicety) and the honest robust / lightly-validated behaviour split.
-12. Screenshots → `artifacts/screenshots/`, 5–6 slide deck, demo recording.
-13. **Two offline rehearsals with WiFi off.**
-
----
-
-## Historical task list (mostly done — kept for reference)
-
-### IMMEDIATE NEXT — Lane A, unblocked, no footage needed
-
-1. **`handleguard/video/reader.py`** — `iter_frames(path, inference_fps=8, max_res=(1280,720))`
-   yielding `Frame` (see `types.py`). Decode with cv2, skip to target fps, resize.
-   `Frame.t` is seconds from start and is the only time source downstream.
-   *Check:* iterate `data/synthetic/drop.mp4`, assert frame count ≈ duration × inference_fps,
-   assert `t` monotonic.
-
-2. **`handleguard/perception/detector.py`** — `YoloWorldDetector.__call__(frame) -> list[Detection]`.
-   Load `models/yolov8s-worldv2.pt`, `set_classes()` from `configs/products.yaml` prompts,
-   map class index → (cls, role). `device="mps"` with a `try/except → "cpu"` fallback.
-   *Check:* runs on a synthetic clip, returns `Detection` objects with role populated.
-
-3. **`handleguard/tracking/tracker.py`** — `Tracker.update(dets, frame) -> list[Track]` via
-   ultralytics ByteTrack (`persist=True`). Plus `NullTracker` (fresh id per detection) for
-   the `use_tracking=False` ablation row.
-   *Check:* IDs stable across a 10 s synthetic clip.
-
-### Lane B — unblocked, uses `data/synthetic/`
-
-4. **`handleguard/behaviours/base.py`** — `BehaviourDetector` ABC + `FrameContext` +
-   `TrackHistory` + `registry`. Copy the 5 contract rules from `plan.md` into the docstring
-   verbatim. Add all 12 `from . import bNN_x` lines to `__init__.py` now with stub classes
-   so nobody edits it again.
-   *Check:* `registry.build_all(cfg)` returns 12 detectors, disabled ones skipped.
-
-5. **`tests/fixtures/synth.py`** — `synth_track(...)`, `make_ctx(...)`, and per-behaviour
-   scenario generators (`scenario_drop`, `scenario_gentle_place`, `scenario_throw`,
-   `scenario_carry`, …).
-   *Check:* `make_ctx` builds a valid `FrameContext` from a list of synthetic tracks.
-
-6. **B01 drop, B02 throw, B03 drag, B07 zone** — one class each. Read thresholds only from
-   `self.cfg`. Distances in object-heights (already normalized in `TrackFeatures`).
-   *Check per detector:* positive scenario fires, hard-negative scenario stays silent.
-   **Write the negative test first.**
-
-### Lane C — unblocked, no footage needed
-
-7. **`handleguard/db/store.py`** — SQLite via stdlib `sqlite3`, one table + JSON blob column.
-   `IncidentStore`: `init / add / query / get / stats / counts_by_behaviour`.
-   `query()` is also the assistant's tool surface — shape it for both.
-   *Check:* add 3 incidents, query by behaviour/min_risk/band, round-trip intact.
-
-8. **`scripts/seed_fake_incidents.py`** — 40 plausible incidents so Lane C can build UI
-   before the pipeline produces real ones. Mark them clearly as seeded, not AI-generated.
-
-9. **Vite scaffold + incident table** — `apps/web/`, React + Vite. Risk and confidence in
-   **separate columns**, band-coloured. Runs against seeded data.
-   *Check:* `npm run dev`, table renders 40 rows, sorts by risk.
-
-### After 1–9 — needs the vertical slice wired (Lane A owns `pipeline.py`)
-
-10. ⛓ **Vertical slice** — `pipeline.py`: synthetic clip → detect → track → features → B01 →
-    risk → incident → clip → DB. **Nothing downstream starts until this runs end to end.**
-
-11. Remaining behaviours B04–B06, B08–B12. `events/dedup.py`, `risk/scorer.py`, `risk/explain.py`,
-    `incidents/builder.py`.
-    *Check:* one continuous drop → exactly 1 incident, not 40.
-
-12. FastAPI (`apps/api/`) — `GET /incidents`, `/incidents/{id}`, `/stats`, `/clips/{file}`, `POST /chat`.
-
-13. Incident detail view + clip playback + review buttons. Chat panel.
-
-14. Assistant — `assistant/templates.py` (offline, default) then LLM path behind `ANTHROPIC_API_KEY`.
-    *Check:* cites incident IDs; "No matching incidents found." on empty; refuses identity questions.
-
-### P1 — credibility
-
-15. ⛓ Eval harness — temporal-IoU event matching, per-behaviour P/R/F1 with **n shown**.
-    Synthetic first (logic), then S3 real footage (the real number). Report both honestly.
-
-16. ⛓ Ablation table — flags off: `use_tracking`, `use_smoothing`, `use_event_graph`.
-    Real deltas. Backs the innovation claim.
-
-17. Latency p50/p95 instrumentation.
-
-### P2 — submission
-
-18. Screenshots, 5–6 slide deck, demo recording, README (with CC BY 4.0 dataset attribution),
-    `scripts/demo.sh` (one command, offline), user-feedback round.
-
----
+7. Screenshots → `artifacts/screenshots/` (console runs now: `./scripts/demo.sh`).
+8. 5-6 slide deck + demo recording.
+9. **Two offline rehearsals with WiFi off.** One has been done from a clean clone;
+   the second should be on the actual demo machine.
+10. Name the third teammate, or accept the Lane C split in Ownership.
 
 ## Recent changes
 
 | When | Who | What |
 |---|---|---|
+| 9 Sep | Claude | **Full audit — file-wise, flow-wise, backend, frontend, live browser.** Fixed: empty `privacy/` package despite three docs claiming face blurring (now implemented, wired into clip writer, tested on stored pixels); missing `metrics/__init__.py`; `seed_fake_incidents.py` ignoring `--help`; README stale test count and undocumented `PATCH /review`; STATE title still saying HandleGuard. Verified live: all 7 endpoints, path traversal blocked (404), invalid review status (422), console renders, filters work, review persists, assistant guardrail holds in the UI, zero console errors. Pruned 85 lines of stale task list. |
 | 8 Sep | Claude | **All 12 behaviours implemented (B04/B10/B11 completed), ablation flags wired, temporal event graph added, README written.** 123 tests pass. B04 defers to B01/B02 and B10 goes silent when equipment is visible, so the weak three don't generate noise they can't justify. |
 | 8 Sep | Claude | **B05/B06/B08/B09/B12 implemented — 4 behaviours to 9.** Shared geometry helpers added to `base.py` so detectors never touch raw `xyxy` (enforced by test). Fixed a real defect: `below()` used `is_above`'s default `min_overlap=0.3`, making a box overhanging >70% invisible to B06 — the most dangerous stack was the one it couldn't see. 103 tests pass. |
 | 8 Sep | Claude | **Offline demo fixed.** CLIP shipped as 4 chunks + SHA256-checked reassembly + `demo.sh` preflight. Verified with sockets blocked: 8.3 s run, zero network calls. |
@@ -522,12 +428,15 @@ downscaled to 1280×720, `imgsz=640`, `inference_fps=8`.
 | Feature + behaviour latency, p50 | ✅ 8 Sep | same | ≈0.1 ms combined |
 | Detector on real industrial CCTV | ✅ 8 Sep | `7_tr1.mp4`, `4_te4.mp4`, one frame each | **57 and 52 detections**, classes person / cardboard box / hand trolley |
 | Offline operation | ✅ 8 Sep | pipeline run with `socket.connect` patched to raise | completes in 8.3 s, **zero outbound connections** |
-| Test suite | ✅ 8 Sep | `pytest -q` | **133 passing** |
+| Test suite | ✅ 9 Sep | `pytest -q` | **140 passing** |
 | Clean-clone install | ✅ 8 Sep | fresh `git clone` to a temp dir, then `setup_offline.py` + `demo.sh --check` | **works — all assets present, CLIP reassembled, preflight OK** |
 | Clean clone runs offline | ✅ 8 Sep | same clone, pipeline with `socket.connect` patched to raise | **ran in 7.4 s, zero network calls** |
 | Repo size (clean clone) | ✅ 8 Sep | `du -sh` | 700 MB (detector 25 MB + CLIP chunks 338 MB + console 216 KB) |
 | Demo console | ✅ 8 Sep | browser at `/` | renders; filters, separate risk/confidence columns, review controls, assistant panel; **12 behaviours shown** |
 | Behaviours implemented | ✅ 8 Sep | `registry.build_all()` | **12 of 12, zero stubs** |
+| API surface | ✅ 9 Sep | live curl against all routes | 7/7 respond; traversal blocked (404), bad review status rejected (422) |
+| Console | ✅ 9 Sep | browser at `/` | renders, filters, sort, review persists, assistant guardrail holds, **zero console errors** |
+| Evidence privacy | ✅ 9 Sep | `tests/unit/test_privacy.py` | head region blurred **in the written clip**; body preserved |
 | Per-behaviour precision / recall | ❌ **NOT MEASURED** | — | **Blocked on footage. Do not quote a number.** |
 | Ablation deltas on real video | ❌ **NOT MEASURED** | harness ready (`scripts/run_ablations.py`) | Blocked on footage |
 

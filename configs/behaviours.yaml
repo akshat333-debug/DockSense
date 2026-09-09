@@ -122,6 +122,19 @@ dedup:
   unsafe_sequence: 10
   unsafe_surface: 8
 
+# Privacy controls applied to STORED evidence.
+#
+# blur_faces blurs the top fraction of every detected person box before the
+# clip is written. Deliberately not face detection: running a face detector to
+# decide what to blur would build the exact capability we say we do not have,
+# and it fails open — an undetected face is an unblurred face.
+#
+# This reduces identifiability. It is NOT anonymisation; gait, clothing and
+# context remain. Describe it as the former.
+privacy:
+  blur_faces: true
+  head_fraction: 0.25
+
 # Evidence clip buffers, seconds
 evidence:
   pre_event_seconds: 3.0

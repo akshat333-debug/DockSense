@@ -8,6 +8,8 @@ import re
 
 import cv2
 
+from handleguard import config
+from handleguard.privacy import blur_person_regions
 from handleguard.types import BehaviourEvent
 
 
@@ -25,11 +27,25 @@ def write_evidence_assets(
     incident_id: str,
     pre_seconds: float = 3.0,
     post_seconds: float = 4.0,
+    person_boxes: list[tuple[float, list[tuple[float, float, float, float]]]] | None = None,
+    blur_faces: bool | None = None,
 ) -> EvidenceAssets:
     """Write a bounded event clip and thumbnail.
 
     Returned paths are relative filenames intended for API clip serving.
+
+    ``person_boxes`` is ``(timestamp, normalized boxes)`` pairs. Normalized
+    because tracks come from downscaled inference frames while this function
+    re-reads the original video; pixel boxes would land in the wrong place.
+    When ``blur_faces`` is on, the head region of each person is blurred before
+    the frame is stored.
+    This reduces identifiability in retained evidence; it is not anonymisation,
+    and nothing here should be described as such.
     """
+    if blur_faces is None:
+        blur_faces = bool(
+            (config.behaviours().get("privacy", {}) or {}).get("blur_faces", False)
+        )
     src = Path(video_path)
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -75,6 +91,14 @@ def write_evidence_assets(
             ok, frame = cap.read()
             if not ok:
                 break
+            if blur_faces and person_boxes:
+                norm = _boxes_at(person_boxes, frame_index / fps if fps else 0.0)
+                if norm:
+                    fh_px, fw_px = frame.shape[:2]
+                    frame = blur_person_regions(
+                        frame,
+                        [(b[0] * fw_px, b[1] * fh_px, b[2] * fw_px, b[3] * fh_px) for b in norm],
+                    )
             writer.write(frame)
             if not thumb_written and frame_index >= int(event.start_t * fps):
                 cv2.imwrite(str(thumb_path), frame)
@@ -93,6 +117,25 @@ def write_evidence_assets(
         )
     finally:
         cap.release()
+
+
+def _boxes_at(
+    person_boxes: list[tuple[float, list[tuple[float, float, float, float]]]],
+    t: float,
+    *,
+    tolerance: float = 0.25,
+) -> list[tuple[float, float, float, float]]:
+    """Nearest recorded person boxes to time ``t``.
+
+    Inference runs at a lower fps than the source video, so most stored frames
+    fall between samples. Reusing the nearest sample within ``tolerance`` keeps
+    heads covered across the gap; beyond that we blur nothing rather than
+    smearing a stale box over the wrong part of the frame.
+    """
+    if not person_boxes:
+        return []
+    best_t, best = min(person_boxes, key=lambda pair: abs(pair[0] - t))
+    return best if abs(best_t - t) <= tolerance else []
 
 
 def _safe_stem(value: str) -> str:

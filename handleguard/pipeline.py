@@ -121,6 +121,12 @@ def run(
 
     history = TrackHistory(max_seconds=_history_seconds(behaviour_cfg))
     deduper = EventDeduper(behaviour_cfg)
+    # Person boxes for privacy blurring of stored clips, as (t, normalized boxes).
+    # Normalized because tracks are in inference resolution while the clip writer
+    # re-reads the ORIGINAL video — storing pixels here would blur the wrong
+    # region at any resolution other than the one we inferred at. Keyed by time
+    # rather than frame index because the reader skips frames.
+    person_boxes: list[tuple[float, list[tuple[float, float, float, float]]]] = []
     prev_t = 0.0
     video_id = video_id or Path(video_path).stem
 
@@ -141,6 +147,13 @@ def run(
         with _stage(timings, "features"):
             feats = feature_extractor.update(tracks, frame)
         history.push(feats)
+        actors = [
+            (t.xyxy[0] / frame.w, t.xyxy[1] / frame.h, t.xyxy[2] / frame.w, t.xyxy[3] / frame.h)
+            for t in tracks
+            if t.role == "actor"
+        ]
+        if actors:
+            person_boxes.append((frame.t, actors))
         dt = frame.t - prev_t if frame.index else 0.0
         prev_t = frame.t
         ctx = FrameContext(
@@ -194,6 +207,7 @@ def run(
                     incident_id=incident_id,
                     pre_seconds=float(evidence_cfg.get("pre_event_seconds", 3.0)),
                     post_seconds=float(evidence_cfg.get("post_event_seconds", 4.0)),
+                    person_boxes=person_boxes,
                 )
             clip_path = assets.clip_path
             thumb_path = assets.thumb_path
